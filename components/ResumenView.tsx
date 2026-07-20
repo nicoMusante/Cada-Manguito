@@ -78,7 +78,7 @@ export function ResumenView({
         ) : (
           <div>
             {movimientos.slice(0, 5).map((m) => (
-              <MovimientoItem key={m.id} t={t} m={m} subtitle={m.fecha} onClick={() => onSelectMovimiento(m)} />
+              <MovimientoItem key={m.id} t={t} m={m} subtitle={m.fecha} onEdit={() => onSelectMovimiento(m)} />
             ))}
           </div>
         )}

@@ -32,7 +32,7 @@ export function MovimientosView({
               <p className="px-5 lg:px-2 text-[10.5px] tracking-[0.1em] uppercase mb-2" style={{ color: t.textSecondary }}>{fecha}</p>
               <div className="px-5 lg:px-2 space-y-1">
                 {items.map((m) => (
-                  <MovimientoItem key={m.id} t={t} m={m} subtitle={m.cat} onClick={() => onSelectMovimiento(m)} />
+                  <MovimientoItem key={m.id} t={t} m={m} subtitle={m.cat} onEdit={() => onSelectMovimiento(m)} />
                 ))}
               </div>
             </div>

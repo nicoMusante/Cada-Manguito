@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { THEMES } from "@/lib/theme";
 import { mapMovimiento, type Movimiento, type MovimientoRow } from "@/lib/mockData";
 import { useSwipe } from "@/lib/useSwipe";
@@ -18,11 +18,13 @@ const TAB_IDS = TABS.map((t) => t.id) as TabId[];
 
 export default function Home() {
   const [tab, setTab] = useState<TabId>("resumen");
+  const [animClass, setAnimClass] = useState("");
   const [dark, setDark] = useState(true);
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
   const t = THEMES[dark ? "dark" : "light"];
+  const prevTabIdx = useRef(0);
 
   const cargarMovimientos = useCallback(() => {
     setLoading(true);
@@ -33,15 +35,22 @@ export default function Home() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    cargarMovimientos();
-  }, [cargarMovimientos]);
+  useEffect(() => { cargarMovimientos(); }, [cargarMovimientos]);
+
+  function changeTab(newTab: TabId) {
+    const oldIdx = prevTabIdx.current;
+    const newIdx = TAB_IDS.indexOf(newTab);
+    // izquierda → nueva pestaña entra desde la derecha; derecha → desde la izquierda
+    setAnimClass(newIdx > oldIdx ? "tab-enter-right" : "tab-enter-left");
+    setTab(newTab);
+    prevTabIdx.current = newIdx;
+  }
 
   function handleSwipe(direction: "left" | "right") {
-    if (modal.mode !== "closed") return; // no cambia de pestaña si el modal está abierto
+    if (modal.mode !== "closed") return;
     const idx = TAB_IDS.indexOf(tab);
-    if (direction === "left" && idx < TAB_IDS.length - 1) setTab(TAB_IDS[idx + 1]);
-    if (direction === "right" && idx > 0) setTab(TAB_IDS[idx - 1]);
+    if (direction === "left"  && idx < TAB_IDS.length - 1) changeTab(TAB_IDS[idx + 1]);
+    if (direction === "right" && idx > 0)                   changeTab(TAB_IDS[idx - 1]);
   }
 
   const swipeHandlers = useSwipe(handleSwipe);
@@ -80,8 +89,8 @@ export default function Home() {
           style={{ backgroundColor: t.bg }}
           {...swipeHandlers}
         >
-          <Sidebar t={t} active={tab} onChange={setTab} />
-          <div className="flex-1 pb-24 lg:pb-0">
+          <Sidebar t={t} active={tab} onChange={changeTab} />
+          <div className="flex-1 pb-24 lg:pb-0 overflow-hidden">
             <Header
               t={t}
               title={titles[tab]}
@@ -89,12 +98,15 @@ export default function Home() {
               onToggleDark={() => setDark((d) => !d)}
               onOpenNuevo={() => setModal({ mode: "new" })}
             />
-            {content}
+            {/* key={tab} fuerza el remount y dispara la animación de entrada */}
+            <div key={tab} className={animClass}>
+              {content}
+            </div>
           </div>
         </div>
       </div>
 
-      <BottomNav t={t} active={tab} onChange={setTab} />
+      <BottomNav t={t} active={tab} onChange={changeTab} />
 
       {modal.mode !== "closed" && (
         <MovimientoModal
