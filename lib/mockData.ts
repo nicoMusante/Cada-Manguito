@@ -1,7 +1,9 @@
 import { Dumbbell, Home as HomeIcon, Zap, Coffee, ShoppingBag, Wallet, LucideIcon } from "lucide-react";
+import { ICONS } from "./icons";
 
 export type Categoria = { name: string; icon: LucideIcon; color: string };
 
+// Categorías: todavía sin endpoint propio, quedan fijas por ahora.
 export const categories: Categoria[] = [
   { name: "Padel", icon: Dumbbell, color: "#2F6F5E" },
   { name: "Casa", icon: HomeIcon, color: "#B8562F" },
@@ -19,25 +21,45 @@ export type Movimiento = {
   icon: LucideIcon;
 };
 
-export const movimientos: Movimiento[] = [
-  { desc: "Sueldo", cat: "Ingreso", monto: 1850000, tipo: "in", fecha: "1 Jul", icon: Wallet },
-  { desc: "Palas y overgrips", cat: "Padel", monto: -64000, tipo: "out", fecha: "2 Jul", icon: Dumbbell },
-  { desc: "Alquiler cancha", cat: "Padel", monto: -18000, tipo: "out", fecha: "3 Jul", icon: Dumbbell },
-  { desc: "Supermercado", cat: "Comida", monto: -47500, tipo: "out", fecha: "3 Jul", icon: Coffee },
-  { desc: "Luz", cat: "Servicios", monto: -22100, tipo: "out", fecha: "4 Jul", icon: Zap },
-  { desc: "Freelance GIS", cat: "Ingreso", monto: 210000, tipo: "in", fecha: "5 Jul", icon: Wallet },
-];
+// Forma en la que llegan las filas desde GET /api/movimientos (vista v_movimientos)
+export type MovimientoRow = {
+  id: number;
+  descripcion: string;
+  categoria: string;
+  tipo: "INGRESO" | "GASTO";
+  color_hex: string | null;
+  icono: string | null;
+  monto: string; // numeric de Postgres llega como string
+  fecha: string; // fecha llega como string ISO
+};
+
+export function mapMovimiento(row: MovimientoRow): Movimiento {
+  const monto = Number(row.monto);
+  return {
+    desc: row.descripcion,
+    cat: row.categoria,
+    monto: row.tipo === "GASTO" ? -monto : monto,
+    tipo: row.tipo === "INGRESO" ? "in" : "out",
+    fecha: new Date(row.fecha).toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
+    icon: (row.icono && ICONS[row.icono]) || Wallet,
+  };
+}
+
+export function computeTotals(movimientos: Movimiento[]) {
+  const ingresos = movimientos.filter((m) => m.tipo === "in").reduce((a, b) => a + b.monto, 0);
+  const gastos = Math.abs(movimientos.filter((m) => m.tipo === "out").reduce((a, b) => a + b.monto, 0));
+  return { ingresos, gastos };
+}
 
 export type Persona = { nombre: string; neto: number; detalle: string };
 
+// Personas: todavía sin endpoint propio, sigue siendo mock por ahora.
 export const personas: Persona[] = [
   { nombre: "Fede", neto: 20000, detalle: "Te debe $20.000" },
   { nombre: "Cami", neto: 18000, detalle: "Te debe $18.000" },
   { nombre: "Male", neto: -5000, detalle: "Le debés $5.000 (te debía $17.000, le debías $22.000)" },
 ];
 
-export const ingresos = movimientos.filter((m) => m.tipo === "in").reduce((a, b) => a + b.monto, 0);
-export const gastos = Math.abs(movimientos.filter((m) => m.tipo === "out").reduce((a, b) => a + b.monto, 0));
 export const meDeben = personas.filter((p) => p.neto > 0).reduce((a, p) => a + p.neto, 0);
 export const yoDebo = Math.abs(personas.filter((p) => p.neto < 0).reduce((a, p) => a + p.neto, 0));
 

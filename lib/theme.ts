@@ -48,4 +48,3 @@ export const THEMES: Record<"light" | "dark", Theme> = {
 };
 
 export type ThemeName = keyof typeof THEMES;
-

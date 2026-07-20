@@ -4,6 +4,6 @@ if (!process.env.DATABASE_URL) {
   throw new Error("Falta la variable de entorno DATABASE_URL");
 }
 
-// `sql` es una función "tagged template": se usa como sql`SELECT * FROM tabla WHERE id = ${id}`
-// Internamente arma la query parametrizada (protege contra SQL injection automáticamente).
+// `sql` es una función "tagged template": sql`SELECT * FROM tabla WHERE id = ${id}`
+// arma la query parametrizada sola, protegiendo contra SQL injection.
 export const sql = neon(process.env.DATABASE_URL);

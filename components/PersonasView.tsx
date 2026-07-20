@@ -18,14 +18,10 @@ export function PersonasView({ t }: { t: Theme }) {
           const value = teDeben ? t.debenValue : t.gastoValue;
           const sub = teDeben ? t.debenSub : t.gastoSub;
           const cardBg = teDeben ? t.debenCard : t.gastoCard;
-
           return (
             <div key={p.nombre} className="rounded-2xl p-3.5 lg:p-4" style={{ backgroundColor: cardBg }}>
               <div className="flex items-center gap-3">
-                <div
-                  className="w-9 h-9 rounded-full text-white flex items-center justify-center text-[12px] font-semibold shrink-0"
-                  style={{ backgroundColor: accent }}
-                >
+                <div className="w-9 h-9 rounded-full text-white flex items-center justify-center text-[12px] font-semibold shrink-0" style={{ backgroundColor: accent }}>
                   {p.nombre[0]}
                 </div>
                 <div className="flex-1">
