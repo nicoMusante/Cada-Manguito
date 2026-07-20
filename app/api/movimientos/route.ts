@@ -5,7 +5,7 @@ import { sql } from "@/lib/db";
 export async function GET() {
   try {
     const rows = await sql`
-      SELECT id, descripcion, categoria, tipo, color_hex, icono, monto, fecha
+      SELECT id, categoria_id, descripcion, categoria, tipo, color_hex, icono, monto, fecha
       FROM v_movimientos
       ORDER BY fecha DESC, id DESC
       LIMIT 50

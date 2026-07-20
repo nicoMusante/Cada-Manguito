@@ -34,17 +34,21 @@ export const categories: Categoria[] = [
 ];
 
 export type Movimiento = {
+  id: number;
+  categoriaId: number;
   desc: string;
   cat: string;
   monto: number;
   tipo: "in" | "out";
   fecha: string;
+  fechaISO: string;
   icon: LucideIcon;
 };
 
 // Forma en la que llegan las filas desde GET /api/movimientos (vista v_movimientos)
 export type MovimientoRow = {
   id: number;
+  categoria_id: number;
   descripcion: string;
   categoria: string;
   tipo: "INGRESO" | "GASTO";
@@ -57,11 +61,14 @@ export type MovimientoRow = {
 export function mapMovimiento(row: MovimientoRow): Movimiento {
   const monto = Number(row.monto);
   return {
+    id: row.id,
+    categoriaId: row.categoria_id,
     desc: row.descripcion,
     cat: row.categoria,
     monto: row.tipo === "GASTO" ? -monto : monto,
     tipo: row.tipo === "INGRESO" ? "in" : "out",
     fecha: new Date(row.fecha).toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
+    fechaISO: row.fecha,
     icon: (row.icono && ICONS[row.icono]) || Wallet,
   };
 }

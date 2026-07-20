@@ -3,8 +3,11 @@
 import { TrendingDown, TrendingUp, HandCoins } from "lucide-react";
 import type { Theme } from "@/lib/theme";
 import { categories, computeTotals, meDeben, yoDebo, fmt, fmtShort, type Movimiento } from "@/lib/mockData";
+import { MovimientoItem } from "@/components/MovimientoItem";
 
-export function ResumenView({ t, movimientos, loading }: { t: Theme; movimientos: Movimiento[]; loading: boolean }) {
+export function ResumenView({
+  t, movimientos, loading, onSelectMovimiento,
+}: { t: Theme; movimientos: Movimiento[]; loading: boolean; onSelectMovimiento: (m: Movimiento) => void }) {
   const { ingresos, gastos } = computeTotals(movimientos);
 
   return (
@@ -74,19 +77,8 @@ export function ResumenView({ t, movimientos, loading }: { t: Theme; movimientos
           <p className="text-[12.5px]" style={{ color: t.textSecondary }}>Todavía no cargaste ningún movimiento.</p>
         ) : (
           <div>
-            {movimientos.slice(0, 5).map((m, i) => (
-              <div key={i} className="flex items-center gap-3 py-2.5 border-b last:border-0" style={{ borderColor: t.divider }}>
-                <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: t.surface }}>
-                  <m.icon size={15} style={{ color: t.textPrimary }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium truncate" style={{ color: t.textPrimary }}>{m.desc}</p>
-                  <p className="text-[10.5px]" style={{ color: t.textSecondary }}>{m.fecha}</p>
-                </div>
-                <p className="text-[13px] font-semibold" style={{ color: m.tipo === "in" ? t.ingresoAccent : t.textPrimary }}>
-                  {m.tipo === "in" ? "+" : "-"}{fmt(Math.abs(m.monto))}
-                </p>
-              </div>
+            {movimientos.slice(0, 5).map((m) => (
+              <MovimientoItem key={m.id} t={t} m={m} subtitle={m.fecha} onClick={() => onSelectMovimiento(m)} />
             ))}
           </div>
         )}

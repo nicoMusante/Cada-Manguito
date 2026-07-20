@@ -9,14 +9,17 @@ import { MovimientosView } from "@/components/MovimientosView";
 import { PersonasView } from "@/components/PersonasView";
 import { BottomNav, type TabId } from "@/components/BottomNav";
 import { Sidebar } from "@/components/Sidebar";
-import { NuevoMovimientoModal } from "@/components/NuevoMovimientoModal";
+import { MovimientoModal } from "@/components/MovimientoModal";
+
+// Estado del modal: cerrado, creando uno nuevo, o editando uno existente
+type ModalState = { mode: "closed" } | { mode: "new" } | { mode: "edit"; movimiento: Movimiento };
 
 export default function Home() {
   const [tab, setTab] = useState<TabId>("resumen");
   const [dark, setDark] = useState(true);
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalAbierto, setModalAbierto] = useState(false);
+  const [modal, setModal] = useState<ModalState>({ mode: "closed" });
   const t = THEMES[dark ? "dark" : "light"];
 
   const cargarMovimientos = useCallback(() => {
@@ -33,8 +36,22 @@ export default function Home() {
   }, [cargarMovimientos]);
 
   const content = {
-    resumen: <ResumenView t={t} movimientos={movimientos} loading={loading} />,
-    movimientos: <MovimientosView t={t} movimientos={movimientos} loading={loading} />,
+    resumen: (
+      <ResumenView
+        t={t}
+        movimientos={movimientos}
+        loading={loading}
+        onSelectMovimiento={(m) => setModal({ mode: "edit", movimiento: m })}
+      />
+    ),
+    movimientos: (
+      <MovimientosView
+        t={t}
+        movimientos={movimientos}
+        loading={loading}
+        onSelectMovimiento={(m) => setModal({ mode: "edit", movimiento: m })}
+      />
+    ),
     personas: <PersonasView t={t} />,
   }[tab];
 
@@ -55,7 +72,7 @@ export default function Home() {
               title={titles[tab]}
               dark={dark}
               onToggleDark={() => setDark((d) => !d)}
-              onOpenNuevo={() => setModalAbierto(true)}
+              onOpenNuevo={() => setModal({ mode: "new" })}
             />
             {content}
           </div>
@@ -64,11 +81,12 @@ export default function Home() {
 
       <BottomNav t={t} active={tab} onChange={setTab} />
 
-      {modalAbierto && (
-        <NuevoMovimientoModal
+      {modal.mode !== "closed" && (
+        <MovimientoModal
           t={t}
-          onClose={() => setModalAbierto(false)}
-          onCreated={cargarMovimientos}
+          movimiento={modal.mode === "edit" ? modal.movimiento : null}
+          onClose={() => setModal({ mode: "closed" })}
+          onSaved={cargarMovimientos}
         />
       )}
     </main>
