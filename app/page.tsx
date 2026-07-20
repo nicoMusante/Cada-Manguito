@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { THEMES } from "@/lib/theme";
-import { mapMovimiento, type Movimiento, type MovimientoRow } from "@/lib/mockData";
+import {
+  mapMovimiento, mapCategoria,
+  type Movimiento, type MovimientoRow,
+  type CategoriaConId, type CategoriaRow,
+} from "@/lib/mockData";
 import { useSwipe } from "@/lib/useSwipe";
 import { Header } from "@/components/Header";
 import { ResumenView } from "@/components/ResumenView";
@@ -11,6 +15,7 @@ import { PersonasView } from "@/components/PersonasView";
 import { BottomNav, TABS, type TabId } from "@/components/BottomNav";
 import { Sidebar } from "@/components/Sidebar";
 import { MovimientoModal } from "@/components/MovimientoModal";
+import { CategoriaModal } from "@/components/CategoriaModal";
 
 type ModalState = { mode: "closed" } | { mode: "new" } | { mode: "edit"; movimiento: Movimiento };
 
@@ -21,8 +26,10 @@ export default function Home() {
   const [animClass, setAnimClass] = useState("");
   const [dark, setDark] = useState(true);
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaConId[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
+  const [categoriaModalAbierta, setCategoriaModalAbierta] = useState(false);
   const t = THEMES[dark ? "dark" : "light"];
   const prevTabIdx = useRef(0);
 
@@ -35,22 +42,33 @@ export default function Home() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { cargarMovimientos(); }, [cargarMovimientos]);
+  const cargarCategorias = useCallback(() => {
+    fetch("/api/categorias", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((rows: CategoriaRow[]) => setCategorias(rows.map(mapCategoria)))
+      .catch((err) => console.error("Error al cargar categorías:", err));
+  }, []);
 
-  function changeTab(newTab: TabId) {
+  useEffect(() => {
+    cargarMovimientos();
+    cargarCategorias();
+  }, [cargarMovimientos, cargarCategorias]);
+
+  // Cambia de pestaña. `animate` solo debe ser true cuando viene de un gesto de swipe;
+  // el toque directo en el menú/sidebar navega instantáneo, sin animación.
+  function changeTab(newTab: TabId, animate = false) {
     const oldIdx = prevTabIdx.current;
     const newIdx = TAB_IDS.indexOf(newTab);
-    // izquierda → nueva pestaña entra desde la derecha; derecha → desde la izquierda
-    setAnimClass(newIdx > oldIdx ? "tab-enter-right" : "tab-enter-left");
+    setAnimClass(animate ? (newIdx > oldIdx ? "tab-enter-right" : "tab-enter-left") : "");
     setTab(newTab);
     prevTabIdx.current = newIdx;
   }
 
   function handleSwipe(direction: "left" | "right") {
-    if (modal.mode !== "closed") return;
+    if (modal.mode !== "closed" || categoriaModalAbierta) return;
     const idx = TAB_IDS.indexOf(tab);
-    if (direction === "left"  && idx < TAB_IDS.length - 1) changeTab(TAB_IDS[idx + 1]);
-    if (direction === "right" && idx > 0)                   changeTab(TAB_IDS[idx - 1]);
+    if (direction === "left" && idx < TAB_IDS.length - 1) changeTab(TAB_IDS[idx + 1], true);
+    if (direction === "right" && idx > 0) changeTab(TAB_IDS[idx - 1], true);
   }
 
   const swipeHandlers = useSwipe(handleSwipe);
@@ -61,7 +79,9 @@ export default function Home() {
         t={t}
         movimientos={movimientos}
         loading={loading}
+        categorias={categorias}
         onSelectMovimiento={(m) => setModal({ mode: "edit", movimiento: m })}
+        onAddCategoria={() => setCategoriaModalAbierta(true)}
       />
     ),
     movimientos: (
@@ -89,7 +109,7 @@ export default function Home() {
           style={{ backgroundColor: t.bg }}
           {...swipeHandlers}
         >
-          <Sidebar t={t} active={tab} onChange={changeTab} />
+          <Sidebar t={t} active={tab} onChange={(id) => changeTab(id, false)} />
           <div className="flex-1 pb-24 lg:pb-0 overflow-hidden">
             <Header
               t={t}
@@ -98,7 +118,6 @@ export default function Home() {
               onToggleDark={() => setDark((d) => !d)}
               onOpenNuevo={() => setModal({ mode: "new" })}
             />
-            {/* key={tab} fuerza el remount y dispara la animación de entrada */}
             <div key={tab} className={animClass}>
               {content}
             </div>
@@ -106,7 +125,7 @@ export default function Home() {
         </div>
       </div>
 
-      <BottomNav t={t} active={tab} onChange={changeTab} />
+      <BottomNav t={t} active={tab} onChange={(id) => changeTab(id, false)} />
 
       {modal.mode !== "closed" && (
         <MovimientoModal
@@ -114,6 +133,14 @@ export default function Home() {
           movimiento={modal.mode === "edit" ? modal.movimiento : null}
           onClose={() => setModal({ mode: "closed" })}
           onSaved={cargarMovimientos}
+        />
+      )}
+
+      {categoriaModalAbierta && (
+        <CategoriaModal
+          t={t}
+          onClose={() => setCategoriaModalAbierta(false)}
+          onCreated={cargarCategorias}
         />
       )}
     </main>

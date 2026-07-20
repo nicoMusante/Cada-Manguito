@@ -1,13 +1,20 @@
 "use client";
 
-import { TrendingDown, TrendingUp, HandCoins } from "lucide-react";
+import { TrendingDown, TrendingUp, HandCoins, Plus } from "lucide-react";
 import type { Theme } from "@/lib/theme";
-import { categories, computeTotals, meDeben, yoDebo, fmt, fmtShort, type Movimiento } from "@/lib/mockData";
+import { computeTotals, meDeben, yoDebo, fmt, fmtShort, type Movimiento, type CategoriaConId } from "@/lib/mockData";
 import { MovimientoItem } from "@/components/MovimientoItem";
 
 export function ResumenView({
-  t, movimientos, loading, onSelectMovimiento,
-}: { t: Theme; movimientos: Movimiento[]; loading: boolean; onSelectMovimiento: (m: Movimiento) => void }) {
+  t, movimientos, loading, categorias, onSelectMovimiento, onAddCategoria,
+}: {
+  t: Theme;
+  movimientos: Movimiento[];
+  loading: boolean;
+  categorias: CategoriaConId[];
+  onSelectMovimiento: (m: Movimiento) => void;
+  onAddCategoria: () => void;
+}) {
   const { ingresos, gastos } = computeTotals(movimientos);
 
   return (
@@ -20,12 +27,20 @@ export function ResumenView({
       </div>
 
       <div className="mt-5 flex gap-2 overflow-x-auto no-scrollbar px-5 lg:px-0 lg:flex-wrap">
-        {categories.map((c) => (
-          <div key={c.name} className="shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-white" style={{ backgroundColor: c.color }}>
+        {categorias.map((c) => (
+          <div key={c.id} className="shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-white" style={{ backgroundColor: c.color }}>
             <c.icon size={13} />
             <span className="text-[11.5px]">{c.name}</span>
           </div>
         ))}
+        <button
+          onClick={onAddCategoria}
+          className="shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 border border-dashed"
+          style={{ borderColor: t.textSecondary, color: t.textSecondary }}
+        >
+          <Plus size={13} />
+          <span className="text-[11.5px]">Categoría</span>
+        </button>
       </div>
 
       <div className="px-5 lg:px-0 mt-6 grid grid-cols-2 lg:grid-cols-3 gap-2.5 lg:gap-4">

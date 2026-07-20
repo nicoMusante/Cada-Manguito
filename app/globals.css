@@ -18,13 +18,13 @@ body {
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 @keyframes slideInFromRight {
-  from { transform: translateX(40px); opacity: 0; }
-  to   { transform: translateX(0);    opacity: 1; }
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
 }
 @keyframes slideInFromLeft {
-  from { transform: translateX(-40px); opacity: 0; }
-  to   { transform: translateX(0);     opacity: 1; }
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
 }
-.tab-enter-right { animation: slideInFromRight 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
-.tab-enter-left  { animation: slideInFromLeft  0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+.tab-enter-right { animation: slideInFromRight 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+.tab-enter-left  { animation: slideInFromLeft  0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 
