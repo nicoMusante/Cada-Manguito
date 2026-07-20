@@ -13,7 +13,7 @@ import { NuevoMovimientoModal } from "@/components/NuevoMovimientoModal";
 
 export default function Home() {
   const [tab, setTab] = useState<TabId>("resumen");
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(true);
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalAbierto, setModalAbierto] = useState(false);

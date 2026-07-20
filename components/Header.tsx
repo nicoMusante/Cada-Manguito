@@ -23,9 +23,13 @@ export function Header({
         </div>
       )}
       <div className="flex items-center gap-2">
-        <button onClick={onToggleDark} className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-medium" style={{ backgroundColor: t.surface, color: t.textPrimary }}>
-          {dark ? <Sun size={14} /> : <Moon size={14} />}
-          {dark ? "Tema claro" : "Tema oscuro"}
+        <button
+          onClick={onToggleDark}
+          className="w-9 h-9 lg:w-auto lg:h-auto flex items-center justify-center gap-2 rounded-full lg:px-4 lg:py-2 text-[13px] font-medium"
+          style={{ backgroundColor: t.surface, color: t.textPrimary }}
+        >
+          {dark ? <Sun size={16} /> : <Moon size={16} />}
+          <span className="hidden lg:inline">{dark ? "Tema claro" : "Tema oscuro"}</span>
         </button>
         <button onClick={onOpenNuevo} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: t.surface }}>
           <Plus size={17} style={{ color: t.textPrimary }} />
