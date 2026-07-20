@@ -4,8 +4,8 @@ import { Plus, ChevronLeft, Moon, Sun } from "lucide-react";
 import type { Theme } from "@/lib/theme";
 
 export function Header({
-  t, title, dark, onToggleDark,
-}: { t: Theme; title?: string; dark: boolean; onToggleDark: () => void }) {
+  t, title, dark, onToggleDark, onOpenNuevo,
+}: { t: Theme; title?: string; dark: boolean; onToggleDark: () => void; onOpenNuevo: () => void }) {
   return (
     <div className="px-5 lg:px-0 pt-8 lg:pt-0 flex items-center justify-between">
       {title ? (
@@ -27,7 +27,7 @@ export function Header({
           {dark ? <Sun size={14} /> : <Moon size={14} />}
           {dark ? "Tema claro" : "Tema oscuro"}
         </button>
-        <button className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: t.surface }}>
+        <button onClick={onOpenNuevo} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: t.surface }}>
           <Plus size={17} style={{ color: t.textPrimary }} />
         </button>
       </div>

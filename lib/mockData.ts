@@ -3,6 +3,27 @@ import { ICONS } from "./icons";
 
 export type Categoria = { name: string; icon: LucideIcon; color: string };
 
+// Forma en la que llegan las filas desde GET /api/categorias
+export type CategoriaRow = {
+  id: number;
+  nombre: string;
+  tipo: "INGRESO" | "GASTO";
+  color_hex: string | null;
+  icono: string | null;
+};
+
+export type CategoriaConId = Categoria & { id: number; tipo: "INGRESO" | "GASTO" };
+
+export function mapCategoria(row: CategoriaRow): CategoriaConId {
+  return {
+    id: row.id,
+    name: row.nombre,
+    tipo: row.tipo,
+    color: row.color_hex || "#8A6D3B",
+    icon: (row.icono && ICONS[row.icono]) || Wallet,
+  };
+}
+
 // Categorías: todavía sin endpoint propio, quedan fijas por ahora.
 export const categories: Categoria[] = [
   { name: "Padel", icon: Dumbbell, color: "#2F6F5E" },
