@@ -26,7 +26,7 @@ export function ResumenView({
         </p>
       </div>
 
-      <div className="mt-5 flex gap-2 overflow-x-auto no-scrollbar px-5 lg:px-0 lg:flex-wrap">
+      <div data-swipe-ignore className="mt-5 flex gap-2 overflow-x-auto no-scrollbar px-5 lg:px-0 lg:flex-wrap">
         {categorias.map((c) => (
           <div key={c.id} className="shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-white" style={{ backgroundColor: c.color }}>
             <c.icon size={13} />
