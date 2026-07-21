@@ -17,11 +17,12 @@ export async function GET() {
   }
 }
 
-// POST /api/movimientos → crea un movimiento nuevo usando la función insertar_movimiento
+// POST /api/movimientos → crea un movimiento nuevo, y opcionalmente una deuda
+// vinculada si el gasto fue compartido con alguien.
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { categoria_id, descripcion, monto, fecha } = body;
+    const { categoria_id, descripcion, monto, fecha, compartir } = body;
 
     if (!categoria_id || !descripcion || !monto) {
       return NextResponse.json(
@@ -33,8 +34,20 @@ export async function POST(request: Request) {
     const rows = await sql`
       SELECT insertar_movimiento(${categoria_id}, ${descripcion}, ${monto}, ${fecha ?? null}) AS id
     `;
+    const movimientoId = rows[0].id;
 
-    return NextResponse.json({ id: rows[0].id }, { status: 201 });
+    // Si se compartió el gasto, la parte de la otra persona queda como
+    // un pendiente a favor ("me deben"), vinculado a este movimiento.
+    if (compartir?.persona_nombre?.trim() && compartir?.monto) {
+      await sql`
+        SELECT crear_deuda(
+          ${compartir.persona_nombre.trim()}, 'ME_DEBEN', ${compartir.monto},
+          ${descripcion}, ${fecha ?? null}, ${movimientoId}
+        )
+      `;
+    }
+
+    return NextResponse.json({ id: movimientoId }, { status: 201 });
   } catch (error) {
     console.error("Error en POST /api/movimientos:", error);
     return NextResponse.json({ error: "No se pudo crear el movimiento" }, { status: 500 });

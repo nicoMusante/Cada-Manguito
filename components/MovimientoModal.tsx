@@ -23,6 +23,9 @@ export function MovimientoModal({
   const [categoriaId, setCategoriaId] = useState<number | null>(movimiento?.categoriaId ?? null);
   const [descripcion, setDescripcion] = useState(movimiento?.desc ?? "");
   const [monto, setMonto] = useState(movimiento ? String(Math.abs(movimiento.monto)) : "");
+  const [compartir, setCompartir] = useState(false);
+  const [personaCompartida, setPersonaCompartida] = useState("");
+  const [montoCompartido, setMontoCompartido] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
@@ -72,6 +75,9 @@ export function MovimientoModal({
           categoria_id: categoriaId,
           descripcion: descripcion.trim(),
           monto: montoNum,
+          ...(!esEdicion && tipo === "GASTO" && compartir && personaCompartida.trim() && Number(montoCompartido) > 0
+            ? { compartir: { persona_nombre: personaCompartida.trim(), monto: Number(montoCompartido) } }
+            : {}),
         }),
       });
 
@@ -233,6 +239,44 @@ export function MovimientoModal({
                 style={{ backgroundColor: t.surface, color: t.textPrimary }}
               />
             </div>
+
+            {!esEdicion && tipo === "GASTO" && (
+              <div className="rounded-2xl p-3.5" style={{ backgroundColor: t.surface, border: `1px dashed ${t.textSecondary}55` }}>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={compartir}
+                    onChange={(e) => setCompartir(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-[12.5px] font-medium" style={{ color: t.textPrimary }}>¿Lo compartiste con alguien?</span>
+                </label>
+                {compartir && (
+                  <div className="mt-3 space-y-2.5">
+                    <input
+                      value={personaCompartida}
+                      onChange={(e) => setPersonaCompartida(e.target.value)}
+                      placeholder="Nombre de la persona"
+                      className="w-full rounded-lg px-3 py-2 text-[13px] outline-none"
+                      style={{ backgroundColor: t.bg, color: t.textPrimary }}
+                    />
+                    <input
+                      value={montoCompartido}
+                      onChange={(e) => setMontoCompartido(e.target.value.replace(/[^0-9.]/g, ""))}
+                      placeholder="Cuánto te debe"
+                      inputMode="decimal"
+                      className="w-full rounded-lg px-3 py-2 text-[13px] outline-none"
+                      style={{ backgroundColor: t.bg, color: t.textPrimary }}
+                    />
+                    {personaCompartida.trim() && Number(montoCompartido) > 0 && (
+                      <p className="text-[10.5px]" style={{ color: t.ingresoAccent }}>
+                        Se va a crear un pendiente: {personaCompartida.trim()} te debe ${Number(montoCompartido).toLocaleString("es-AR")}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {error && <p className="text-[12px]" style={{ color: t.gastoAccent }}>{error}</p>}
 
