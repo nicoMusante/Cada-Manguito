@@ -74,6 +74,10 @@ export default function Home() {
 
   const abrirEdicion = (m: Movimiento) => setModal({ mode: "edit", movimiento: m });
 
+  // Derivados de la lista real de personas (ya viene de /api/personas)
+  const meDeben = personasActivas.filter((p) => Number(p.neto) > 0).reduce((acc, p) => acc + Number(p.neto), 0);
+  const yoDebo = Math.abs(personasActivas.filter((p) => Number(p.neto) < 0).reduce((acc, p) => acc + Number(p.neto), 0));
+
   // Un gasto compartido puede haber generado una deuda nueva → refrescamos las dos cosas
   const alGuardarMovimiento = () => {
     cargarMovimientos();
@@ -86,6 +90,8 @@ export default function Home() {
       movimientos={movimientos}
       loading={loading}
       categorias={categorias}
+      meDeben={meDeben}
+      yoDebo={yoDebo}
       onSelectMovimiento={abrirEdicion}
       onAddCategoria={() => setCategoriaModalAbierta(true)}
     />

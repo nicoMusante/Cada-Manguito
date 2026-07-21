@@ -2,16 +2,18 @@
 
 import { TrendingDown, TrendingUp, Clock, Plus } from "lucide-react";
 import type { Theme } from "@/lib/theme";
-import { computeTotals, meDeben, yoDebo, fmt, fmtShort, type Movimiento, type CategoriaConId } from "@/lib/mockData";
+import { computeTotals, fmt, fmtShort, type Movimiento, type CategoriaConId } from "@/lib/mockData";
 import { MovimientoItem } from "@/components/MovimientoItem";
 
 export function ResumenView({
-  t, movimientos, loading, categorias, onSelectMovimiento, onAddCategoria,
+  t, movimientos, loading, categorias, meDeben, yoDebo, onSelectMovimiento, onAddCategoria,
 }: {
   t: Theme;
   movimientos: Movimiento[];
   loading: boolean;
   categorias: CategoriaConId[];
+  meDeben: number;
+  yoDebo: number;
   onSelectMovimiento: (m: Movimiento) => void;
   onAddCategoria: () => void;
 }) {
