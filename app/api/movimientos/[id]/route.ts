@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 // PATCH /api/movimientos/:id → edita un movimiento existente
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {

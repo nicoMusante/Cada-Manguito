@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/movimientos → últimos movimientos, usando la vista v_movimientos
 export async function GET() {
   try {

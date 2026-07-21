@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/personas → personas con deuda pendiente (con neto y último detalle),
 // más una lista corta de las deudas saldadas más recientes.
 export async function GET() {

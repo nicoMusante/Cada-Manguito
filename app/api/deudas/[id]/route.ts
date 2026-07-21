@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 // DELETE /api/deudas/:id → elimina una entrada de deuda puntual
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
   try {

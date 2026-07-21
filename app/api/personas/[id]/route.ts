@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/personas/:id → datos de la persona + historial completo (pendientes y saldadas)
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   try {

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/categorias → categorías activas, para poblar el formulario de nuevo movimiento
 export async function GET() {
   try {

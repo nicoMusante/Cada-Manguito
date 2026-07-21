@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 // PATCH /api/personas/:id/saldar → salda todas las deudas pendientes con esa persona
 export async function PATCH(_request: Request, { params }: { params: { id: string } }) {
   try {

@@ -60,11 +60,12 @@ export function PersonaDetalleModal({
 
   async function handleDeleteEntry(id: number) {
     try {
-      await fetch(`/api/deudas/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/deudas/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("No se pudo eliminar.");
       setHistorial((h) => h.filter((d) => d.id !== id));
       onChanged();
     } catch (err) {
-      console.error(err);
+      console.error("Error al eliminar deuda:", err);
     }
   }
 

@@ -17,7 +17,7 @@ import { MovimientoModal } from "@/components/MovimientoModal";
 import { CategoriaModal } from "@/components/CategoriaModal";
 import { DeudaModal } from "@/components/DeudaModal";
 import { PersonaDetalleModal } from "@/components/PersonaDetalleModal";
-import { MobileCarousel } from "@/components/MobileCarousel";
+import { MobileShell } from "@/components/MobileShell";
 
 type ModalState = { mode: "closed" } | { mode: "new" } | { mode: "edit"; movimiento: Movimiento };
 
@@ -40,7 +40,7 @@ export default function Home() {
 
   const cargarMovimientos = useCallback(() => {
     setLoading(true);
-    fetch("/api/movimientos", { cache: "no-store" })
+    return fetch("/api/movimientos", { cache: "no-store" })
       .then((r) => r.json())
       .then((rows: MovimientoRow[]) => setMovimientos(rows.map(mapMovimiento)))
       .catch((err) => console.error("Error al cargar movimientos:", err))
@@ -48,7 +48,7 @@ export default function Home() {
   }, []);
 
   const cargarCategorias = useCallback(() => {
-    fetch("/api/categorias", { cache: "no-store" })
+    return fetch("/api/categorias", { cache: "no-store" })
       .then((r) => r.json())
       .then((rows: CategoriaRow[]) => setCategorias(rows.map(mapCategoria)))
       .catch((err) => console.error("Error al cargar categorías:", err));
@@ -56,7 +56,7 @@ export default function Home() {
 
   const cargarPersonas = useCallback(() => {
     setLoadingPersonas(true);
-    fetch("/api/personas", { cache: "no-store" })
+    return fetch("/api/personas", { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         setPersonasActivas(data.activas ?? []);
@@ -64,6 +64,20 @@ export default function Home() {
       })
       .catch((err) => console.error("Error al cargar personas:", err))
       .finally(() => setLoadingPersonas(false));
+  }, []);
+
+  // Versión "silenciosa" para pull-to-refresh: no dispara los estados de loading
+  // (que harían parpadear la lista a "Cargando..." mientras arrastrás el dedo).
+  const refrescarSilencioso = useCallback(async () => {
+    const [movRows, catRows, personasData] = await Promise.all([
+      fetch("/api/movimientos", { cache: "no-store" }).then((r) => r.json()) as Promise<MovimientoRow[]>,
+      fetch("/api/categorias", { cache: "no-store" }).then((r) => r.json()) as Promise<CategoriaRow[]>,
+      fetch("/api/personas", { cache: "no-store" }).then((r) => r.json()),
+    ]);
+    setMovimientos(movRows.map(mapMovimiento));
+    setCategorias(catRows.map(mapCategoria));
+    setPersonasActivas(personasData.activas ?? []);
+    setPersonasSaldadas(personasData.saldadas ?? []);
   }, []);
 
   useEffect(() => {
@@ -74,11 +88,9 @@ export default function Home() {
 
   const abrirEdicion = (m: Movimiento) => setModal({ mode: "edit", movimiento: m });
 
-  // Derivados de la lista real de personas (ya viene de /api/personas)
   const meDeben = personasActivas.filter((p) => Number(p.neto) > 0).reduce((acc, p) => acc + Number(p.neto), 0);
   const yoDebo = Math.abs(personasActivas.filter((p) => Number(p.neto) < 0).reduce((acc, p) => acc + Number(p.neto), 0));
 
-  // Un gasto compartido puede haber generado una deuda nueva → refrescamos las dos cosas
   const alGuardarMovimiento = () => {
     cargarMovimientos();
     cargarPersonas();
@@ -121,8 +133,6 @@ export default function Home() {
     personas: "Personas",
   };
 
-  // El botón "+" del header se adapta a la pestaña activa: en Personas carga
-  // una deuda nueva, en el resto carga un movimiento.
   const abrirNuevo = () => {
     if (tab === "personas") setDeudaModalAbierta(true);
     else setModal({ mode: "new" });
@@ -141,13 +151,17 @@ export default function Home() {
             {panelesPorTab[tab]}
           </div>
 
-          {/* Mobile: header + carrusel que sigue el dedo en vivo */}
-          <div className="lg:hidden flex-1 pb-24">
-            <Header t={t} title={titles[tab]} dark={dark} onToggleDark={() => setDark((d) => !d)} onOpenNuevo={abrirNuevo} />
-            <MobileCarousel
+          {/* Mobile: swipe entre pestañas en cualquier parte de la pantalla + pull-to-refresh */}
+          <div className="lg:hidden">
+            <MobileShell
+              t={t}
+              header={
+                <Header t={t} title={titles[tab]} dark={dark} onToggleDark={() => setDark((d) => !d)} onOpenNuevo={abrirNuevo} />
+              }
               index={TAB_IDS.indexOf(tab)}
               onIndexChange={(i) => setTab(TAB_IDS[i])}
               disabled={modalAbierto}
+              onRefresh={refrescarSilencioso}
               panels={[resumenPanel, movimientosPanel, personasPanel]}
             />
           </div>

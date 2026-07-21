@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 // POST /api/deudas → crea una deuda nueva. Si la persona no existe, se crea sola.
 export async function POST(request: Request) {
   try {
