@@ -1,4 +1,27 @@
-# CLAUDE.md — Cada Manguito (Frontend & Backend Rules)
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Comandos
+
+```
+npm run dev      # servidor de desarrollo (localhost:3000)
+npm run build    # build de producción
+npm run start    # sirve el build de producción
+npm run lint     # next lint
+```
+
+No hay suite de tests configurada. Requiere `.env.local` con `DATABASE_URL` (ver `.env.local.example`) apuntando a una base Neon con el esquema de abajo ya creado — no hay migraciones en el repo, el esquema vive directamente en Neon.
+
+## Arquitectura
+
+- Toda la lógica de negocio (validaciones, cálculos, inserciones en cascada) vive en funciones PL/pgSQL dentro de Neon, no en el código TS. Las rutas de `app/api/` son finas: parsean el body, llaman a la función o vista correspondiente vía `sql` (tagged template de `lib/db.ts`) y devuelven el resultado. Ver `app/api/movimientos/route.ts` como ejemplo del patrón (GET contra `v_movimientos`, POST vía `insertar_movimiento`, con `crear_deuda` encadenada si el gasto fue compartido).
+- `app/page.tsx` es el único componente con estado: carga movimientos/categorías/personas por `fetch` a las rutas propias, y pasa todo hacia abajo por props a las vistas (`ResumenView`, `MovimientosView`, `PersonasView`) y modales. No hay store global ni context.
+- Las filas que llegan de Postgres (snake_case, `monto` como string, `tipo` en mayúsculas) se mapean a los tipos de UI (camelCase, `monto` con signo, `icon` como componente Lucide) en `lib/mockData.ts` (`mapMovimiento`, `mapCategoria`). Los endpoints no devuelven directamente los tipos de UI.
+- `lib/icons.ts` mapea el string `icono` guardado en la base a un componente de `lucide-react`.
+- Un solo objeto `Theme` (`lib/theme.ts`, variantes `light`/`dark`) se pasa como prop `t` a cada componente — no se usa Tailwind dark: variant ni CSS vars para el theming, son estilos inline con los valores del objeto.
+- `MobileShell` maneja swipe entre tabs y pull-to-refresh en mobile; en desktop (`lg:`) se muestra sidebar + panel único en vez del carrusel. Ambos layouts renderizan los mismos paneles (`resumenPanel`, `movimientosPanel`, `personasPanel`) construidos una sola vez en `page.tsx`.
+- Categorías y personas se resuelven por nombre si no existen (`obtener_o_crear_persona`) — no hay pantalla de alta de personas separada, se crean implícitamente al cargar una deuda.
 
 ## Visión General y Stack
 - **Proyecto**: "Cada Manguito" (App de finanzas personales, gestión de ingresos, gastos, deudas y saldos).
