@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 // GET /api/personas → personas con deuda pendiente (con neto y último detalle),
 // más una lista corta de las deudas saldadas más recientes.
@@ -22,7 +23,10 @@ export async function GET() {
       LIMIT 10
     `;
 
-    return NextResponse.json({ activas, saldadas });
+    return NextResponse.json(
+      { activas, saldadas },
+      { headers: { "Cache-Control": "no-store, max-age=0" } }
+    );
   } catch (error) {
     console.error("Error en GET /api/personas:", error);
     return NextResponse.json({ error: "No se pudieron obtener las personas" }, { status: 500 });

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 // GET /api/movimientos → últimos movimientos, usando la vista v_movimientos
 export async function GET() {
@@ -12,7 +13,7 @@ export async function GET() {
       ORDER BY fecha DESC, id DESC
       LIMIT 50
     `;
-    return NextResponse.json(rows);
+    return NextResponse.json(rows, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
     console.error("Error en GET /api/movimientos:", error);
     return NextResponse.json({ error: "No se pudieron obtener los movimientos" }, { status: 500 });

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 // GET /api/personas/:id → datos de la persona + historial completo (pendientes y saldadas)
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
@@ -25,7 +26,10 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       .filter((d: any) => d.estado === "pendiente")
       .reduce((acc: number, d: any) => acc + (d.tipo === "ME_DEBEN" ? Number(d.monto) : -Number(d.monto)), 0);
 
-    return NextResponse.json({ persona: personaRows[0], neto, historial });
+    return NextResponse.json(
+      { persona: personaRows[0], neto, historial },
+      { headers: { "Cache-Control": "no-store, max-age=0" } }
+    );
   } catch (error) {
     console.error("Error en GET /api/personas/[id]:", error);
     return NextResponse.json({ error: "No se pudo obtener el historial" }, { status: 500 });

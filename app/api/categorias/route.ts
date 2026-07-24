@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 // GET /api/categorias → categorías activas, para poblar el formulario de nuevo movimiento
 export async function GET() {
@@ -12,7 +13,7 @@ export async function GET() {
       WHERE activo = true
       ORDER BY tipo, nombre
     `;
-    return NextResponse.json(rows);
+    return NextResponse.json(rows, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
     console.error("Error en GET /api/categorias:", error);
     return NextResponse.json({ error: "No se pudieron obtener las categorías" }, { status: 500 });
