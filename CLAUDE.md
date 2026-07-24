@@ -11,7 +11,7 @@ npm run start    # sirve el build de producción
 npm run lint     # next lint
 ```
 
-No hay suite de tests configurada. Requiere `.env.local` con `DATABASE_URL` (ver `.env.local.example`) apuntando a una base Neon con el esquema de abajo ya creado — no hay migraciones en el repo, el esquema vive directamente en Neon.
+No hay suite de tests configurada. Requiere `.env.local` con `DATABASE_URL` (ver `.env.local.example`) apuntando a una base Neon con el esquema de abajo ya creado. No hay migraciones en el repo — el esquema vive directamente en Neon, pero `db/schema.sql` guarda un snapshot consolidado e idempotente (tablas, vistas, funciones, seed) para poder recrearlo o consultarlo sin conectarse a la base. Es un snapshot manual, no se corre automático ni queda sincronizado solo: si se cambia algo en Neon, hay que actualizar ese archivo a mano.
 
 ## Arquitectura
 
@@ -22,6 +22,7 @@ No hay suite de tests configurada. Requiere `.env.local` con `DATABASE_URL` (ver
 - Un solo objeto `Theme` (`lib/theme.ts`, variantes `light`/`dark`) se pasa como prop `t` a cada componente — no se usa Tailwind dark: variant ni CSS vars para el theming, son estilos inline con los valores del objeto.
 - `MobileShell` maneja swipe entre tabs y pull-to-refresh en mobile; en desktop (`lg:`) se muestra sidebar + panel único en vez del carrusel. Ambos layouts renderizan los mismos paneles (`resumenPanel`, `movimientosPanel`, `personasPanel`) construidos una sola vez en `page.tsx`.
 - Categorías y personas se resuelven por nombre si no existen (`obtener_o_crear_persona`) — no hay pantalla de alta de personas separada, se crean implícitamente al cargar una deuda.
+- `lib/mockData.ts` todavía tiene arrays y exports sueltos (`categories`, `personas`, `meDeben`, `yoDebo` a nivel de módulo) de antes de que existieran los endpoints reales — son código muerto, no los uses como fuente de datos. Lo que sí se usa activamente del archivo son los tipos (`Movimiento`, `MovimientoRow`, `CategoriaConId`, `CategoriaRow`) y las funciones `mapMovimiento`/`mapCategoria`.
 
 ## Visión General y Stack
 - **Proyecto**: "Cada Manguito" (App de finanzas personales, gestión de ingresos, gastos, deudas y saldos).
