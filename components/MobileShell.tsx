@@ -70,7 +70,8 @@ export function MobileShell({
     if (st.dir === "h") {
       e.preventDefault();
       let d = dx;
-      if ((index === 0 && d > 0) || (index === panels.length - 1 && d < 0)) d *= 0.35;
+      // en los extremos no hay pestaña hacia la que ir, asi que no arrastramos nada
+      if ((index === 0 && d > 0) || (index === panels.length - 1 && d < 0)) d = 0;
       setDragPx(d);
     } else if (st.dir === "v" && st.atTop && dy > 0) {
       // Solo tira para refrescar si arrancó arriba del todo y el dedo va para abajo

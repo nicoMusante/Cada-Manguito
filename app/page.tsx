@@ -118,6 +118,7 @@ export default function Home() {
       saldadas={personasSaldadas}
       loading={loadingPersonas}
       onSelectPersona={setPersonaDetalleId}
+      onChanged={cargarPersonas}
     />
   );
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, HandCoins } from "lucide-react";
+import { ChevronRight, HandCoins, Trash2 } from "lucide-react";
 import type { Theme } from "@/lib/theme";
 
 export type PersonaActiva = { persona_id: number; nombre: string; neto: string; ultimo_detalle: string | null };
@@ -9,14 +9,25 @@ export type DeudaSaldada = { id: number; nombre: string; monto: string; saldado_
 const fmt = (n: number) => n.toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
 
 export function PersonasView({
-  t, activas, saldadas, loading, onSelectPersona,
+  t, activas, saldadas, loading, onSelectPersona, onChanged,
 }: {
   t: Theme;
   activas: PersonaActiva[];
   saldadas: DeudaSaldada[];
   loading: boolean;
   onSelectPersona: (id: number) => void;
+  onChanged: () => void;
 }) {
+  async function handleDeleteSaldada(id: number) {
+    try {
+      const res = await fetch(`/api/deudas/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("No se pudo eliminar.");
+      onChanged();
+    } catch (err) {
+      console.error("Error al eliminar deuda saldada:", err);
+    }
+  }
+
   const totalNeto = activas.reduce((acc, p) => acc + Number(p.neto), 0);
 
   return (
@@ -90,6 +101,13 @@ export function PersonasView({
                   </p>
                 </div>
                 <p className="text-[12px]" style={{ color: t.textSecondary }}>{fmt(Number(s.monto))}</p>
+                <button
+                  onClick={() => handleDeleteSaldada(s.id)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                  aria-label="Eliminar"
+                >
+                  <Trash2 size={13} style={{ color: t.textSecondary }} />
+                </button>
               </div>
             ))}
           </div>

@@ -130,7 +130,11 @@ export function PersonaDetalleModal({
                   >
                     {h.tipo === "ME_DEBEN" ? "+" : "-"}{fmt(Number(h.monto))}
                   </p>
-                  <button onClick={() => handleDeleteEntry(h.id)} className="opacity-0 group-hover:opacity-100 transition">
+                  <button
+                    onClick={() => handleDeleteEntry(h.id)}
+                    className={h.estado === "saldado" ? "opacity-100 transition" : "opacity-0 group-hover:opacity-100 transition"}
+                    aria-label="Eliminar"
+                  >
                     <Trash2 size={13} style={{ color: t.textSecondary }} />
                   </button>
                 </div>

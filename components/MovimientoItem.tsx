@@ -5,7 +5,7 @@ import { MoreVertical } from "lucide-react";
 import type { Theme } from "@/lib/theme";
 import { type Movimiento, fmt } from "@/lib/mockData";
 
-const LONG_PRESS_MS = 480;
+const LONG_PRESS_MS = 220;
 
 export function MovimientoItem({
   t,
@@ -38,9 +38,12 @@ export function MovimientoItem({
     setPressing(false);
   }
 
-  function onTouchEnd() {
+  function onTouchEnd(e: React.TouchEvent) {
+    // si hubo long press, el modal ya abrió — frenamos el click fantasma que
+    // el navegador dispara al soltar el dedo, que si no cae sobre el fondo
+    // del modal recién abierto y lo cierra solo.
+    if (didLongPress.current) e.preventDefault();
     cancelPress();
-    // si fue long press, el modal ya abrió — no hacer nada más
   }
 
   return (
