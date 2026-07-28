@@ -1,0 +1,67 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm install*)",
+      "Bash(npm ci*)",
+      "Bash(npm list*)",
+      "Bash(npm outdated*)",
+      "Bash(npx next build*)",
+      "Bash(npx tsc*)",
+      "Bash(next build*)",
+      "Bash(next lint*)",
+      "Bash(tsc*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(ls*)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(mkdir *)",
+      "Bash(mv *)",
+      "Bash(cp *)",
+      "Bash(pwd)",
+      "Bash(jq *)"
+    ],
+    "ask": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push origin --delete*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean *)",
+      "Bash(git checkout -- *)",
+      "Bash(git restore *)",
+      "Bash(git commit --no-verify*)",
+      "Bash(git commit -n *)",
+      "Bash(git commit --no-gpg-sign*)",
+      "Bash(git push --no-verify*)",
+      "Bash(git branch -D *)",
+      "Bash(git branch --delete --force*)",
+      "Bash(psql*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "( jq -r '.tool_input.file_path // empty' | grep -qE '/(app|components|lib)/' && { pgrep -f 'node_modules/.bin/next dev' >/dev/null || (PATH=\"/home/nico/.nvm/versions/node/v24.18.0/bin:$PATH\" nohup npm run dev > /tmp/cada-manguito-dev-server.log 2>&1 & disown); } ) 2>/dev/null || true",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}
