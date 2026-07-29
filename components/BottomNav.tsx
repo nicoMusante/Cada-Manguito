@@ -1,14 +1,15 @@
 "use client";
 
-import { Wallet, List, Users } from "lucide-react";
+import { Wallet, List, Users, Repeat } from "lucide-react";
 import type { Theme } from "@/lib/theme";
 
-export type TabId = "resumen" | "movimientos" | "personas";
+export type TabId = "resumen" | "movimientos" | "personas" | "fijos";
 
 export const TABS: { id: TabId; label: string; icon: typeof Wallet }[] = [
   { id: "resumen", label: "Resumen", icon: Wallet },
   { id: "movimientos", label: "Movimientos", icon: List },
   { id: "personas", label: "Personas", icon: Users },
+  { id: "fijos", label: "Fijos", icon: Repeat },
 ];
 
 export function BottomNav({ t, active, onChange }: { t: Theme; active: TabId; onChange: (id: TabId) => void }) {

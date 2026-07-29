@@ -15,6 +15,21 @@ CREATE TABLE IF NOT EXISTS categorias (
     CONSTRAINT chk_categoria_tipo CHECK (tipo IN ('INGRESO', 'GASTO'))
 );
 
+-- Gastos fijos/recurrentes (alquiler, suscripciones, etc.): cada mes que se
+-- entra a la app con dia_mes ya cumplido, se genera solo el movimiento real
+-- correspondiente (ver generar_gastos_fijos_pendientes).
+CREATE TABLE IF NOT EXISTS gastos_fijos (
+    id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    categoria_id  INTEGER       NOT NULL REFERENCES categorias(id),
+    descripcion   VARCHAR(120)  NOT NULL,
+    monto         NUMERIC(14,2) NOT NULL,
+    dia_mes       INTEGER       NOT NULL DEFAULT 1,
+    activo        BOOLEAN       NOT NULL DEFAULT TRUE,
+    creado_en     TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_gasto_fijo_monto_positivo CHECK (monto > 0),
+    CONSTRAINT chk_gasto_fijo_dia CHECK (dia_mes BETWEEN 1 AND 28)
+);
+
 CREATE TABLE IF NOT EXISTS movimientos (
     id             INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     categoria_id   INTEGER       NOT NULL REFERENCES categorias(id),
@@ -22,10 +37,12 @@ CREATE TABLE IF NOT EXISTS movimientos (
     monto          NUMERIC(14,2) NOT NULL,       -- siempre positivo; el signo lo da categorias.tipo
     fecha          DATE          NOT NULL DEFAULT CURRENT_DATE,
     creado_en      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    gasto_fijo_id  INTEGER       REFERENCES gastos_fijos(id),  -- si no es null, este movimiento lo generó un gasto fijo
     CONSTRAINT chk_monto_positivo CHECK (monto > 0)
 );
 CREATE INDEX IF NOT EXISTS ix_movimientos_fecha     ON movimientos (fecha);
 CREATE INDEX IF NOT EXISTS ix_movimientos_cat_fecha ON movimientos (categoria_id, fecha);
+CREATE INDEX IF NOT EXISTS ix_movimientos_gasto_fijo ON movimientos (gasto_fijo_id);
 
 CREATE TABLE IF NOT EXISTS personas (
     id       INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -50,6 +67,19 @@ CREATE TABLE IF NOT EXISTS deudas (
 CREATE INDEX IF NOT EXISTS ix_deudas_persona    ON deudas (persona_id);
 CREATE INDEX IF NOT EXISTS ix_deudas_estado     ON deudas (estado);
 CREATE INDEX IF NOT EXISTS ix_deudas_movimiento ON deudas (movimiento_id);
+
+-- Pagos parciales ("cuotas") contra una entrada puntual de deudas. El monto
+-- original de la deuda no se toca nunca: el saldo pendiente de cada entrada
+-- es siempre monto - SUM(pagos_deuda.monto).
+CREATE TABLE IF NOT EXISTS pagos_deuda (
+    id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    deuda_id    INTEGER       NOT NULL REFERENCES deudas(id) ON DELETE CASCADE,
+    monto       NUMERIC(14,2) NOT NULL,
+    fecha       DATE          NOT NULL DEFAULT CURRENT_DATE,
+    creado_en   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_pago_deuda_monto_positivo CHECK (monto > 0)
+);
+CREATE INDEX IF NOT EXISTS ix_pagos_deuda_deuda ON pagos_deuda (deuda_id);
 
 -- ========================= SEED =========================
 
@@ -85,11 +115,13 @@ JOIN categorias c ON c.id = m.categoria_id;
 
 -- Personas con deuda pendiente: neto ya calculado + el detalle del último
 -- pendiente (para el subtítulo de cada tarjeta en la pantalla de Personas).
+-- El neto usa el saldo pendiente de cada deuda (monto menos lo ya pagado en
+-- cuotas vía pagos_deuda), no el monto original.
 CREATE OR REPLACE VIEW v_personas_activas AS
 SELECT
     p.id AS persona_id,
     p.nombre,
-    SUM(CASE WHEN d.tipo = 'ME_DEBEN' THEN d.monto ELSE -d.monto END) AS neto,
+    SUM(CASE WHEN d.tipo = 'ME_DEBEN' THEN (d.monto - COALESCE(pg.pagado, 0)) ELSE -(d.monto - COALESCE(pg.pagado, 0)) END) AS neto,
     (
         SELECT d2.descripcion || ' · ' || TO_CHAR(d2.fecha, 'DD Mon')
         FROM deudas d2
@@ -99,9 +131,94 @@ SELECT
     ) AS ultimo_detalle
 FROM personas p
 JOIN deudas d ON d.persona_id = p.id
+LEFT JOIN LATERAL (
+    SELECT SUM(monto) AS pagado FROM pagos_deuda WHERE deuda_id = d.id
+) pg ON true
 WHERE d.estado = 'pendiente'
 GROUP BY p.id, p.nombre
-HAVING SUM(CASE WHEN d.tipo = 'ME_DEBEN' THEN d.monto ELSE -d.monto END) != 0;
+HAVING SUM(CASE WHEN d.tipo = 'ME_DEBEN' THEN (d.monto - COALESCE(pg.pagado, 0)) ELSE -(d.monto - COALESCE(pg.pagado, 0)) END) != 0;
+
+-- ========================= FUNCIONES: CATEGORIAS =========================
+
+-- Baja lógica: no se borra la fila (los movimientos históricos siguen
+-- necesitando su categoria_id), sólo deja de listarse como activa.
+CREATE OR REPLACE FUNCTION eliminar_categoria(p_id INTEGER) RETURNS VOID AS $$
+BEGIN
+    UPDATE categorias SET activo = false WHERE id = p_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'La categoría indicada no existe.';
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ========================= FUNCIONES: GASTOS FIJOS =========================
+
+CREATE OR REPLACE FUNCTION crear_gasto_fijo(
+    p_categoria_id  INTEGER,
+    p_descripcion   VARCHAR,
+    p_monto         NUMERIC,
+    p_dia_mes       INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    v_tipo   VARCHAR(10);
+    v_activo BOOLEAN;
+    v_id     INTEGER;
+BEGIN
+    SELECT tipo, activo INTO v_tipo, v_activo FROM categorias WHERE id = p_categoria_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'La categoría indicada no existe.';
+    END IF;
+    IF NOT v_activo THEN
+        RAISE EXCEPTION 'La categoría seleccionada está inactiva.';
+    END IF;
+    IF v_tipo != 'GASTO' THEN
+        RAISE EXCEPTION 'Un gasto fijo tiene que usar una categoría de tipo GASTO.';
+    END IF;
+
+    INSERT INTO gastos_fijos (categoria_id, descripcion, monto, dia_mes)
+    VALUES (p_categoria_id, p_descripcion, p_monto, p_dia_mes)
+    RETURNING id INTO v_id;
+
+    RETURN v_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Baja lógica: deja de generar movimientos nuevos, pero los que ya generó
+-- quedan intactos en el historial.
+CREATE OR REPLACE FUNCTION eliminar_gasto_fijo(p_id INTEGER) RETURNS VOID AS $$
+BEGIN
+    UPDATE gastos_fijos SET activo = false WHERE id = p_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'El gasto fijo indicado no existe.';
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Recorre los gastos fijos activos y, para cada uno cuyo día del mes ya
+-- llegó y todavía no tiene un movimiento generado en el mes en curso, crea
+-- ese movimiento. Se llama sola desde GET /api/movimientos cuando se pide
+-- el mes actual — no hace falta ningún cron aparte.
+CREATE OR REPLACE FUNCTION generar_gastos_fijos_pendientes() RETURNS INTEGER AS $$
+DECLARE
+    v_gf      RECORD;
+    v_fecha   DATE;
+    v_creados INTEGER := 0;
+BEGIN
+    FOR v_gf IN SELECT * FROM gastos_fijos WHERE activo = true LOOP
+        IF EXTRACT(DAY FROM CURRENT_DATE) >= v_gf.dia_mes AND NOT EXISTS (
+            SELECT 1 FROM movimientos
+            WHERE gasto_fijo_id = v_gf.id
+              AND TO_CHAR(fecha, 'YYYY-MM') = TO_CHAR(CURRENT_DATE, 'YYYY-MM')
+        ) THEN
+            v_fecha := make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int, EXTRACT(MONTH FROM CURRENT_DATE)::int, v_gf.dia_mes);
+            INSERT INTO movimientos (categoria_id, descripcion, monto, fecha, gasto_fijo_id)
+            VALUES (v_gf.categoria_id, v_gf.descripcion, v_gf.monto, v_fecha, v_gf.id);
+            v_creados := v_creados + 1;
+        END IF;
+    END LOOP;
+    RETURN v_creados;
+END;
+$$ LANGUAGE plpgsql;
 
 -- ========================= FUNCIONES: MOVIMIENTOS =========================
 
@@ -255,5 +372,70 @@ BEGIN
     UPDATE deudas
     SET estado = 'saldado', saldado_en = CURRENT_TIMESTAMP
     WHERE persona_id = p_persona_id AND estado = 'pendiente';
+END;
+$$ LANGUAGE plpgsql;
+
+-- Salda puntualmente una o varias entradas de deuda (elegidas por id), sin
+-- tocar el resto de las pendientes de la persona.
+CREATE OR REPLACE FUNCTION saldar_deudas(p_ids INTEGER[]) RETURNS VOID AS $$
+BEGIN
+    UPDATE deudas
+    SET estado = 'saldado', saldado_en = CURRENT_TIMESTAMP
+    WHERE id = ANY(p_ids) AND estado = 'pendiente';
+END;
+$$ LANGUAGE plpgsql;
+
+-- Registra el pago de una cuota (parte o el total) de una entrada de deuda
+-- puntual. Si la cuota cubre lo que quedaba pendiente, la deuda se marca
+-- saldada sola; si no, sigue pendiente con el saldo ya descontado.
+CREATE OR REPLACE FUNCTION pagar_movimiento(p_deuda_id INTEGER, p_monto NUMERIC) RETURNS VOID AS $$
+DECLARE
+    v_monto_total NUMERIC;
+    v_estado      VARCHAR(10);
+    v_pagado      NUMERIC;
+    v_saldo       NUMERIC;
+BEGIN
+    IF p_monto <= 0 THEN
+        RAISE EXCEPTION 'El monto a pagar debe ser mayor a cero.';
+    END IF;
+
+    SELECT monto, estado INTO v_monto_total, v_estado FROM deudas WHERE id = p_deuda_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'El movimiento indicado no existe.';
+    END IF;
+    IF v_estado = 'saldado' THEN
+        RAISE EXCEPTION 'Ese movimiento ya está saldado.';
+    END IF;
+
+    SELECT COALESCE(SUM(monto), 0) INTO v_pagado FROM pagos_deuda WHERE deuda_id = p_deuda_id;
+    v_saldo := v_monto_total - v_pagado;
+
+    IF p_monto > v_saldo THEN
+        RAISE EXCEPTION 'El monto no puede ser mayor al saldo pendiente de ese movimiento.';
+    END IF;
+
+    INSERT INTO pagos_deuda (deuda_id, monto) VALUES (p_deuda_id, p_monto);
+
+    IF p_monto = v_saldo THEN
+        UPDATE deudas SET estado = 'saldado', saldado_en = CURRENT_TIMESTAMP WHERE id = p_deuda_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Deshace un pago puntual de cuota; si la deuda se había saldado sola con
+-- esa cuota, la reabre.
+CREATE OR REPLACE FUNCTION eliminar_pago(p_pago_id INTEGER) RETURNS VOID AS $$
+DECLARE
+    v_deuda_id INTEGER;
+BEGIN
+    SELECT deuda_id INTO v_deuda_id FROM pagos_deuda WHERE id = p_pago_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'El pago indicado no existe.';
+    END IF;
+
+    DELETE FROM pagos_deuda WHERE id = p_pago_id;
+
+    UPDATE deudas SET estado = 'pendiente', saldado_en = NULL
+    WHERE id = v_deuda_id AND estado = 'saldado';
 END;
 $$ LANGUAGE plpgsql;

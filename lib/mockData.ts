@@ -73,6 +73,42 @@ export function mapMovimiento(row: MovimientoRow): Movimiento {
   };
 }
 
+// Forma en la que llegan las filas desde GET /api/gastos-fijos
+export type GastoFijoRow = {
+  id: number;
+  categoria_id: number;
+  descripcion: string;
+  monto: string;
+  dia_mes: number;
+  categoria: string;
+  color_hex: string | null;
+  icono: string | null;
+};
+
+export type GastoFijo = {
+  id: number;
+  categoriaId: number;
+  desc: string;
+  cat: string;
+  monto: number;
+  diaMes: number;
+  color: string;
+  icon: LucideIcon;
+};
+
+export function mapGastoFijo(row: GastoFijoRow): GastoFijo {
+  return {
+    id: row.id,
+    categoriaId: row.categoria_id,
+    desc: row.descripcion,
+    cat: row.categoria,
+    monto: Number(row.monto),
+    diaMes: row.dia_mes,
+    color: row.color_hex || "#8A6D3B",
+    icon: (row.icono && ICONS[row.icono]) || Wallet,
+  };
+}
+
 export function computeTotals(movimientos: Movimiento[]) {
   const ingresos = movimientos.filter((m) => m.tipo === "in").reduce((a, b) => a + b.monto, 0);
   const gastos = Math.abs(movimientos.filter((m) => m.tipo === "out").reduce((a, b) => a + b.monto, 0));

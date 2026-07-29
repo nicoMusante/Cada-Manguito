@@ -16,15 +16,27 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     }
 
     const historial = await sql`
-      SELECT id, tipo, monto, descripcion, fecha, estado, saldado_en
-      FROM deudas
-      WHERE persona_id = ${id}
-      ORDER BY fecha DESC, id DESC
+      SELECT
+        d.id, d.tipo, d.monto, d.descripcion, d.fecha, d.estado, d.saldado_en,
+        COALESCE(pg.pagado, 0) AS pagado,
+        COALESCE(pg.pagos, '[]'::json) AS pagos
+      FROM deudas d
+      LEFT JOIN LATERAL (
+        SELECT
+          SUM(monto) AS pagado,
+          json_agg(json_build_object('id', id, 'monto', monto, 'fecha', fecha) ORDER BY fecha, id) AS pagos
+        FROM pagos_deuda WHERE deuda_id = d.id
+      ) pg ON true
+      WHERE d.persona_id = ${id}
+      ORDER BY d.fecha DESC, d.id DESC
     `;
 
     const neto = historial
       .filter((d: any) => d.estado === "pendiente")
-      .reduce((acc: number, d: any) => acc + (d.tipo === "ME_DEBEN" ? Number(d.monto) : -Number(d.monto)), 0);
+      .reduce((acc: number, d: any) => {
+        const saldo = Number(d.monto) - Number(d.pagado);
+        return acc + (d.tipo === "ME_DEBEN" ? saldo : -saldo);
+      }, 0);
 
     return NextResponse.json(
       { persona: personaRows[0], neto, historial },

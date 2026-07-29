@@ -1,11 +1,11 @@
 "use client";
 
-import { Plus, ChevronLeft, Moon, Sun } from "lucide-react";
-import type { Theme } from "@/lib/theme";
+import { Plus, ChevronLeft, Palette } from "lucide-react";
+import { THEME_LABELS, type Theme, type ThemeName } from "@/lib/theme";
 
 export function Header({
-  t, title, dark, onToggleDark, onOpenNuevo,
-}: { t: Theme; title?: string; dark: boolean; onToggleDark: () => void; onOpenNuevo: () => void }) {
+  t, title, themeName, onOpenTema, onOpenNuevo,
+}: { t: Theme; title?: string; themeName: ThemeName; onOpenTema: () => void; onOpenNuevo: () => void }) {
   return (
     <div className="px-5 lg:px-0 pt-8 lg:pt-0 flex items-center justify-between">
       {title ? (
@@ -24,12 +24,12 @@ export function Header({
       )}
       <div className="flex items-center gap-2">
         <button
-          onClick={onToggleDark}
+          onClick={onOpenTema}
           className="w-9 h-9 lg:w-auto lg:h-auto flex items-center justify-center gap-2 rounded-full lg:px-4 lg:py-2 text-[13px] font-medium"
           style={{ backgroundColor: t.surface, color: t.textPrimary }}
         >
-          {dark ? <Sun size={16} /> : <Moon size={16} />}
-          <span className="hidden lg:inline">{dark ? "Tema claro" : "Tema oscuro"}</span>
+          <Palette size={16} />
+          <span className="hidden lg:inline">{THEME_LABELS[themeName]}</span>
         </button>
         <button onClick={onOpenNuevo} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: t.surface }}>
           <Plus size={17} style={{ color: t.textPrimary }} />

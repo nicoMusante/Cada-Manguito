@@ -14,7 +14,7 @@ export interface Theme {
   deboAccent: string;
 }
 
-export const THEMES: Record<"light" | "dark", Theme> = {
+export const THEMES: Record<"light" | "dark" | "yellow" | "navy", Theme> = {
   light: {
     bg: "#FBF4EC",
     outerBg: "#EDE9DE",
@@ -45,6 +45,43 @@ export const THEMES: Record<"light" | "dark", Theme> = {
     debenCard: "#1E2C30", debenAccent: "#7BC2D6", debenSub: "#A9C8D0", debenValue: "#E6F4F7",
     deboAccent: "#E0793F",
   },
+  yellow: {
+    bg: "#FFF8E1",
+    outerBg: "#FBEFC4",
+    surfaceCard: "#FFFFFF",
+    textPrimary: "#4A3B0A",
+    textSecondary: "#9C8A4E",
+    divider: "#F5E7A8",
+    surface: "#FBEFC4",
+    avatarBg: "#D4A017",
+    navBg: "rgba(255,248,225,0.95)",
+    gastoCard: "#F5DFA0", gastoAccent: "#B8860B", gastoSub: "#8A6F2E", gastoValue: "#4A3B0A",
+    ingresoCard: "#E8EFC0", ingresoAccent: "#6B8E23", ingresoSub: "#5C6E2E", ingresoValue: "#33421A",
+    debenCard: "#F0E4B8", debenAccent: "#C9932F", debenSub: "#9C7A2E", debenValue: "#4A3B0A",
+    deboAccent: "#B8562F",
+  },
+  navy: {
+    bg: "#0F1B2D",
+    outerBg: "#0A1420",
+    surfaceCard: "#16263D",
+    textPrimary: "#E8EEF5",
+    textSecondary: "#8FA3BD",
+    divider: "#1F3350",
+    surface: "#1B2E48",
+    avatarBg: "#3B6EA5",
+    navBg: "rgba(15,27,45,0.95)",
+    gastoCard: "#2A2038", gastoAccent: "#D97E5B", gastoSub: "#C9A98A", gastoValue: "#E8EEF5",
+    ingresoCard: "#1A3328", ingresoAccent: "#6FBF8B", ingresoSub: "#A9CDB9", ingresoValue: "#EAF3E8",
+    debenCard: "#1B2E48", debenAccent: "#5DA3D9", debenSub: "#A9C8D0", debenValue: "#E6F4F7",
+    deboAccent: "#D97E5B",
+  },
 };
 
 export type ThemeName = keyof typeof THEMES;
+
+export const THEME_LABELS: Record<ThemeName, string> = {
+  light: "Claro",
+  dark: "Oscuro",
+  yellow: "Amarillo",
+  navy: "Clásico azul",
+};

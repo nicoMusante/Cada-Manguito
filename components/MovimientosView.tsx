@@ -3,10 +3,20 @@
 import type { Theme } from "@/lib/theme";
 import { type Movimiento } from "@/lib/mockData";
 import { MovimientoItem } from "@/components/MovimientoItem";
+import { MonthSwitcher } from "@/components/MonthSwitcher";
 
 export function MovimientosView({
-  t, movimientos, loading, onSelectMovimiento,
-}: { t: Theme; movimientos: Movimiento[]; loading: boolean; onSelectMovimiento: (m: Movimiento) => void }) {
+  t, movimientos, loading, onSelectMovimiento, periodoLabel, onMesAnterior, onMesSiguiente, esMesActual,
+}: {
+  t: Theme;
+  movimientos: Movimiento[];
+  loading: boolean;
+  onSelectMovimiento: (m: Movimiento) => void;
+  periodoLabel: string;
+  onMesAnterior: () => void;
+  onMesSiguiente: () => void;
+  esMesActual: boolean;
+}) {
   const grouped = movimientos.reduce<Record<string, Movimiento[]>>((acc, m) => {
     acc[m.fecha] = acc[m.fecha] || [];
     acc[m.fecha].push(m);
@@ -15,6 +25,8 @@ export function MovimientosView({
 
   return (
     <div className="pb-4 lg:pb-0">
+      <MonthSwitcher t={t} label={periodoLabel} onAnterior={onMesAnterior} onSiguiente={onMesSiguiente} esMesActual={esMesActual} />
+
       <p className="px-5 lg:px-0 mt-1 lg:mt-6 text-[11.5px] lg:text-[13px]" style={{ color: t.textSecondary }}>
         {movimientos.length} movimientos
       </p>

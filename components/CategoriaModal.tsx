@@ -5,7 +5,10 @@ import { X, Check } from "lucide-react";
 import type { Theme } from "@/lib/theme";
 import { ICONS, ICON_OPTIONS } from "@/lib/icons";
 
-const COLORES = ["#2F6F5E", "#B8562F", "#8A6D3B", "#4A5D6B", "#6B4A6B", "#3E6B7A", "#5C7A3E", "#A63E3E"];
+const COLORES = [
+  "#2F6F5E", "#B8562F", "#8A6D3B", "#4A5D6B", "#6B4A6B", "#3E6B7A", "#5C7A3E", "#A63E3E",
+  "#35507A", "#C9A227", "#8A4B6B", "#55606B", "#2E5A3E", "#9C4A2E", "#4B4B8A", "#C1614B",
+];
 
 export function CategoriaModal({
   t,

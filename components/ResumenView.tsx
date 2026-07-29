@@ -1,12 +1,14 @@
 "use client";
 
-import { TrendingDown, TrendingUp, Clock, Plus } from "lucide-react";
+import { TrendingDown, TrendingUp, Clock, Plus, X } from "lucide-react";
 import type { Theme } from "@/lib/theme";
 import { computeTotals, fmt, fmtShort, type Movimiento, type CategoriaConId } from "@/lib/mockData";
 import { MovimientoItem } from "@/components/MovimientoItem";
+import { MonthSwitcher } from "@/components/MonthSwitcher";
 
 export function ResumenView({
-  t, movimientos, loading, categorias, meDeben, yoDebo, onSelectMovimiento, onAddCategoria,
+  t, movimientos, loading, categorias, meDeben, yoDebo, onSelectMovimiento, onAddCategoria, onEliminarCategoria,
+  periodoLabel, onMesAnterior, onMesSiguiente, esMesActual,
 }: {
   t: Theme;
   movimientos: Movimiento[];
@@ -16,11 +18,18 @@ export function ResumenView({
   yoDebo: number;
   onSelectMovimiento: (m: Movimiento) => void;
   onAddCategoria: () => void;
+  onEliminarCategoria: (id: number) => void;
+  periodoLabel: string;
+  onMesAnterior: () => void;
+  onMesSiguiente: () => void;
+  esMesActual: boolean;
 }) {
   const { ingresos, gastos } = computeTotals(movimientos);
 
   return (
     <div className="pb-4 lg:pb-0">
+      <MonthSwitcher t={t} label={periodoLabel} onAnterior={onMesAnterior} onSiguiente={onMesSiguiente} esMesActual={esMesActual} />
+
       <div className="px-5 lg:px-0 mt-5 lg:mt-6">
         <p className="text-[12px] lg:text-[13px]" style={{ color: t.textSecondary }}>Disponible este mes</p>
         <p className="text-[34px] lg:text-[40px] font-bold mt-1" style={{ color: t.textPrimary }}>
@@ -35,11 +44,19 @@ export function ResumenView({
         {categorias.map((c) => (
           <div
             key={c.id}
-            className="shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-white"
+            className="shrink-0 flex items-center gap-1.5 rounded-full pl-3.5 pr-2 py-2 text-white"
             style={{ backgroundColor: c.color }}
           >
             <c.icon size={13} />
             <span className="text-[11.5px]">{c.name}</span>
+            <button
+              onClick={() => onEliminarCategoria(c.id)}
+              className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+              style={{ backgroundColor: "rgba(255,255,255,0.25)" }}
+              aria-label={`Eliminar categoría ${c.name}`}
+            >
+              <X size={9} />
+            </button>
           </div>
         ))}
         <button

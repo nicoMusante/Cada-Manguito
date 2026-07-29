@@ -4,14 +4,25 @@ import { sql } from "@/lib/db";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-// GET /api/movimientos → últimos movimientos, usando la vista v_movimientos
-export async function GET() {
+// GET /api/movimientos?periodo=YYYY-MM → movimientos del mes indicado (o el
+// mes en curso si no se pasa), usando la vista v_movimientos.
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const periodoActual = new Date().toISOString().slice(0, 7);
+    const periodo = searchParams.get("periodo") || periodoActual;
+
+    // si se está pidiendo el mes en curso, primero genero los movimientos de
+    // los gastos fijos que ya cumplieron su día y todavía no se generaron
+    if (periodo === periodoActual) {
+      await sql`SELECT generar_gastos_fijos_pendientes()`;
+    }
+
     const rows = await sql`
       SELECT id, categoria_id, descripcion, categoria, tipo, color_hex, icono, monto, fecha
       FROM v_movimientos
+      WHERE periodo = ${periodo}
       ORDER BY fecha DESC, id DESC
-      LIMIT 50
     `;
     return NextResponse.json(rows, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {
