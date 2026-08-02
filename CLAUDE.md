@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-"Cada Manguito": app de finanzas personales (ingresos, gastos, deudas, saldos). Next.js (App Router, TS) + Tailwind + Postgres en Neon (`lib/db.ts`). Deploy en Vercel.
+"Cada Manguito": app de finanzas personales (ingresos, gastos, deudas, saldos). Next.js (App Router, TS) + Tailwind + Postgres en Neon (`lib/db.ts`), multi-usuario con NextAuth. Deploy en Vercel.
 
 ## Comandos
 
@@ -15,7 +15,7 @@ npm run lint     # next lint
 
 Node vía nvm en `~/.nvm/versions/node/v24.18.0/bin` — no siempre está en el PATH por defecto de todos los entornos/shells; si `npm`/`node` da "orden no encontrada", agregar esa ruta al PATH antes de reintentar. `node_modules` no viene en el repo: correr `npm install` la primera vez.
 
-No hay suite de tests configurada. Requiere `.env.local` con `DATABASE_URL` apuntando a una base Neon con el esquema de abajo ya creado. No hay migraciones en el repo — el esquema vive directamente en Neon, pero `db/schema.sql` guarda un snapshot consolidado e idempotente (tablas, vistas, funciones, seed) para poder recrearlo o consultarlo sin conectarse a la base. Es un snapshot manual, no se corre automático ni queda sincronizado solo: si se cambia algo en Neon, hay que actualizar ese archivo a mano.
+No hay suite de tests configurada. Requiere `.env.local` con `DATABASE_URL` apuntando a una base Neon con el esquema de abajo ya creado, `AUTH_SECRET` (generar con `npx auth secret`) y, opcionalmente, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` para habilitar login con Google — sin esas dos el login por mail/contraseña sigue funcionando igual (`auth.ts` sólo agrega el provider de Google si están completas). No hay migraciones en el repo — el esquema vive directamente en Neon, pero `db/schema.sql` guarda un snapshot consolidado e idempotente (tablas, vistas, funciones, seed) para poder recrearlo o consultarlo sin conectarse a la base. Es un snapshot manual, no se corre automático ni queda sincronizado solo: si se cambia algo en Neon, hay que actualizar ese archivo a mano. `db/migracion_usuarios.sql` es una migración puntual (no idempotente, de un solo uso) para pasar una base pre-multiusuario al esquema actual — no correrla de nuevo sobre una base ya migrada.
 
 **Conexión a la base — ojo con esto**: el connection string real va únicamente en `.env.local` (gitignoreado, nunca se sube). `.env.local.example` es sólo la plantilla con placeholder y SÍ está versionado en git — nunca pegar ahí un string real (ya pasó una vez: quedó una contraseña real en un archivo trackeado, sin commitear de milagro; hubo que rotarla). Además, cambios en `.env.local` no hacen hot-reload — Next sólo lee las env vars al arrancar, así que después de tocar `DATABASE_URL` hay que matar y volver a levantar `npm run dev`.
 
@@ -23,13 +23,15 @@ No hay suite de tests configurada. Requiere `.env.local` con `DATABASE_URL` apun
 
 ## Arquitectura
 
-- Toda la lógica de negocio (validaciones, cálculos, inserciones en cascada) vive en funciones PL/pgSQL dentro de Neon, no en el código TS. Las rutas de `app/api/` son finas: parsean el body, llaman a la función o vista correspondiente vía `sql` (tagged template de `lib/db.ts`) y devuelven el resultado. Ver `app/api/movimientos/route.ts` como ejemplo del patrón (GET contra `v_movimientos`, POST vía `insertar_movimiento`, con `crear_deuda` encadenada si el gasto fue compartido).
-- `app/page.tsx` es el único componente con estado: carga movimientos/categorías/personas/gastos fijos por `fetch` a las rutas propias, y pasa todo hacia abajo por props a las vistas (`ResumenView`, `MovimientosView`, `PersonasView`, `GastosFijosView`) y modales. No hay store global ni context.
+- **Multi-usuario**: todas las tablas de datos (menos `pagos_deuda`, que se valida indirectamente vía `deudas.usuario_id`) llevan `usuario_id`. Cada función PL/pgSQL recibe `p_usuario_id` como primer parámetro y filtra por él — no hay row-level security de Postgres, el aislamiento entre usuarios se hace a mano en cada función y en cada vista.
+- **Auth con NextAuth v5** (`auth.ts`, `auth.config.ts`, `middleware.ts`): login por email/contraseña (`bcryptjs` contra `usuarios.password_hash`) y, si están las env vars, Google OAuth. `auth.config.ts` es la config "edge-safe" (sin providers ni acceso a la base) que usa `middleware.ts` para decidir si redirige a `/login`; `auth.ts` extiende esa config agregando los providers reales y los callbacks que sí tocan la base (alta automática de usuario + `sembrar_categorias_default` en el primer login con Google, resolución del `usuarioId` interno guardado en el JWT). El middleware excluye `/api` de su matcher a propósito: un `fetch` no puede seguir un redirect a una página HTML como si fuera la respuesta esperada, así que cada ruta de `app/api/` valida su propia sesión con `getUsuarioId()`/`noAutenticado()` (`lib/auth.ts`) y devuelve 401 en vez de depender del middleware.
+- Toda la lógica de negocio (validaciones, cálculos, inserciones en cascada) vive en funciones PL/pgSQL dentro de Neon, no en el código TS. Las rutas de `app/api/` son finas: resuelven `usuarioId` con `getUsuarioId()`, parsean el body, llaman a la función o vista correspondiente vía `sql` (tagged template de `lib/db.ts`) pasando siempre `usuarioId` como filtro/parámetro, y devuelven el resultado. Ver `app/api/movimientos/route.ts` como ejemplo del patrón (GET contra `v_movimientos`, POST vía `insertar_movimiento`, con `crear_deuda` encadenada si el gasto fue compartido).
+- `app/page.tsx` es un server component: resuelve la sesión con `auth()`, redirige a `/login` si no hay usuario, y si hay lo pasa como prop a `components/Home.tsx`. `Home` es el único componente con estado real de la app: carga movimientos/categorías/personas/gastos fijos por `fetch` a las rutas propias (siempre con `cache: "no-store"`, la sesión viaja en la cookie) y pasa todo hacia abajo por props a las vistas (`ResumenView`, `MovimientosView`, `PersonasView`, `GastosFijosView`) y modales. No hay store global ni context. `app/login/page.tsx` y `app/registro/page.tsx` son las páginas públicas fuera de ese árbol.
 - Las filas que llegan de Postgres (snake_case, `monto` como string, `tipo` en mayúsculas) se mapean a los tipos de UI (camelCase, `monto` con signo, `icon` como componente Lucide) en `lib/mockData.ts` (`mapMovimiento`, `mapCategoria`, `mapGastoFijo`). Los endpoints no devuelven directamente los tipos de UI.
 - `lib/icons.ts` mapea el string `icono` guardado en la base a un componente de `lucide-react`.
 - Un objeto `Theme` (`lib/theme.ts`, 4 variantes: `light`, `dark`, `yellow`, `navy`, con labels en `THEME_LABELS`) se pasa como prop `t` a cada componente — no se usa Tailwind dark: variant ni CSS vars para el theming, son estilos inline con los valores del objeto. El tema activo se elige desde `ThemeModal`, no hay más un simple toggle claro/oscuro.
-- `MobileShell` maneja swipe entre tabs y pull-to-refresh en mobile; en desktop (`lg:`) se muestra sidebar + panel único en vez del carrusel. Ambos layouts renderizan los mismos paneles (`resumenPanel`, `movimientosPanel`, `personasPanel`, `fijosPanel`) construidos una sola vez en `page.tsx`.
-- Movimientos y resumen están acotados a un mes (`periodo` `YYYY-MM`, estado en `page.tsx`, helpers en `lib/periodo.ts`). `GET /api/movimientos?periodo=YYYY-MM` filtra por ese mes; `MonthSwitcher` navega entre meses en `ResumenView` y `MovimientosView`. Las deudas de `PersonasView` NO se filtran por mes: persisten hasta que se saldan.
+- `MobileShell` maneja swipe entre tabs y pull-to-refresh en mobile; en desktop (`lg:`) se muestra sidebar + panel único en vez del carrusel. Ambos layouts renderizan los mismos paneles (`resumenPanel`, `movimientosPanel`, `personasPanel`, `fijosPanel`) construidos una sola vez en `Home`.
+- Movimientos y resumen están acotados a un mes (`periodo` `YYYY-MM`, estado en `Home`, helpers en `lib/periodo.ts`). `GET /api/movimientos?periodo=YYYY-MM` filtra por ese mes; `MonthSwitcher` navega entre meses en `ResumenView` y `MovimientosView`. Las deudas de `PersonasView` NO se filtran por mes: persisten hasta que se saldan.
 - Gastos fijos/recurrentes (`gastos_fijos`, tab "Fijos") se auto-generan como movimientos reales: cada vez que `GET /api/movimientos` se pide para el mes en curso, dispara primero `generar_gastos_fijos_pendientes()` (idempotente, chequea `movimientos.gasto_fijo_id`), que crea el movimiento de cada gasto fijo activo cuyo `dia_mes` ya llegó y todavía no se generó ese mes. No hay cron: el trigger es ese GET.
 - Categorías y personas se resuelven por nombre si no existen (`obtener_o_crear_persona`) — no hay pantalla de alta de personas separada, se crean implícitamente al cargar una deuda.
 - "Eliminar" categoría o gasto fijo es baja lógica (`activo = false` vía `eliminar_categoria`/`eliminar_gasto_fijo`), no un DELETE — así los movimientos históricos que ya los referencian no se rompen.
@@ -41,33 +43,39 @@ No hay suite de tests configurada. Requiere `.env.local` con `DATABASE_URL` apun
 La app está pensada principalmente para usarse en celular, pero corre también en desktop (`lg:` sidebar + panel único, ver bullet de `MobileShell` arriba). Todo cambio de UI de acá en adelante tiene que contemplar ambos layouts: si se toca un componente compartido entre `MobileShell` y el layout desktop, o se agrega algo nuevo, probar (o al menos revisar el JSX) en viewport mobile y en `lg:` antes de dar el cambio por terminado — no alcanza con verificar el que se ve por default.
 
 ## Estructura del Proyecto
-- `app/api/`: Endpoints REST (`/categorias` [+ `/[id]` DELETE], `/movimientos`, `/personas`, `/deudas` [+ `/saldar`, `/[id]/pagos`], `/pagos/[id]`, `/gastos-fijos` [+ `/[id]`]).
+- `app/api/`: Endpoints REST (`/categorias` [+ `/[id]` DELETE], `/movimientos`, `/personas`, `/deudas` [+ `/saldar`, `/[id]/pagos`], `/pagos/[id]`, `/gastos-fijos` [+ `/[id]`]). Todas requieren sesión (`getUsuarioId`).
+- `app/login/`, `app/registro/`: páginas públicas de autenticación, fuera del árbol de `Home`.
 - `components/`:
+  - `Home`: componente cliente raíz, dueño de todo el estado (ver Arquitectura).
   - Vistas principales: `ResumenView`, `MovimientosView`, `PersonasView`, `GastosFijosView`.
   - Modales: `MovimientoModal`, `CategoriaModal`, `DeudaModal`, `GastoFijoModal`, `PersonaDetalleModal`, `ThemeModal`.
   - UI / Shell: `MobileShell`, `Header`, `Sidebar`, `BottomNav`, `MovimientoItem`, `MonthSwitcher`.
-- `lib/`: `db.ts` (cliente Neon), `mockData.ts`, `theme.ts`, `icons.ts`, `periodo.ts` (helpers de mes: `periodoActual`, `sumarMeses`, `formatPeriodoLabel`).
+- `lib/`: `db.ts` (cliente Neon), `auth.ts` (`getUsuarioId`/`noAutenticado`, usado por las rutas de `app/api/`), `mockData.ts`, `theme.ts`, `icons.ts`, `periodo.ts` (helpers de mes: `periodoActual`, `sumarMeses`, `formatPeriodoLabel`).
+- `auth.ts`, `auth.config.ts`, `middleware.ts`: configuración de NextAuth (raíz del repo, no en `lib/`).
 
 ## Esquema de Base de Datos (Neon PostgreSQL)
 
 ### Tablas Principales
-- **`categorias`**: `id`, `nombre` (UNIQUE), `tipo` ('INGRESO'/'GASTO'), `color_hex`, `icono`, `activo`.
-- **`gastos_fijos`**: `id`, `categoria_id` (FK, tiene que ser tipo GASTO), `descripcion`, `monto` (>0), `dia_mes` (1-28), `activo`, `creado_en`.
-- **`movimientos`**: `id`, `categoria_id` (FK), `descripcion`, `monto` (>0), `fecha`, `creado_en`, `gasto_fijo_id` (FK opcional — si no es null, lo generó un gasto fijo).
-- **`personas`**: `id`, `nombre` (UNIQUE).
-- **`deudas`**: `id`, `persona_id` (FK), `tipo` ('ME_DEBEN'/'YO_DEBO'), `monto` (>0), `descripcion`, `fecha`, `estado` ('pendiente'/'saldado'), `movimiento_id` (FK opcional), `saldado_en`.
-- **`pagos_deuda`**: `id`, `deuda_id` (FK), `monto` (>0), `fecha`, `creado_en` — cuotas/pagos parciales de una deuda puntual.
+- **`usuarios`**: `id`, `email` (UNIQUE), `password_hash` (null si sólo usa Google), `nombre`, `google_id` (UNIQUE), `creado_en`.
+- **`categorias`**: `id`, `usuario_id` (FK), `nombre` (UNIQUE por usuario), `tipo` ('INGRESO'/'GASTO'), `color_hex`, `icono`, `activo`.
+- **`gastos_fijos`**: `id`, `usuario_id` (FK), `categoria_id` (FK, tiene que ser tipo GASTO), `descripcion`, `monto` (>0), `dia_mes` (1-28), `activo`, `creado_en`.
+- **`movimientos`**: `id`, `usuario_id` (FK), `categoria_id` (FK), `descripcion`, `monto` (>0), `fecha`, `creado_en`, `gasto_fijo_id` (FK opcional — si no es null, lo generó un gasto fijo).
+- **`personas`**: `id`, `usuario_id` (FK), `nombre` (UNIQUE por usuario).
+- **`deudas`**: `id`, `usuario_id` (FK), `persona_id` (FK), `tipo` ('ME_DEBEN'/'YO_DEBO'), `monto` (>0, original, nunca se edita), `descripcion`, `fecha`, `estado` ('pendiente'/'saldado'), `movimiento_id` (FK opcional), `saldado_en`.
+- **`pagos_deuda`**: `id`, `deuda_id` (FK, `ON DELETE CASCADE`), `monto` (>0), `fecha`, `creado_en` — cuotas/pagos parciales de una deuda puntual. Sin `usuario_id` propio: el dueño se valida siempre a través de `deudas.usuario_id`.
 
 ### Vistas
 - **`v_movimientos`**: Une `movimientos` y `categorias`. Calcula `monto_con_signo` (negativo si es 'GASTO'), `mes` y `periodo` ('YYYY-MM').
 - **`v_personas_activas`**: Agrupa deudas pendientes por persona (saldo ya neto de `pagos_deuda`), calcula saldo neto y trae el `ultimo_detalle`.
 
 ### Funciones PL/pgSQL
-- **Categorías**: `eliminar_categoria(id)` (baja lógica).
-- **Gastos fijos**: `crear_gasto_fijo(...)`, `eliminar_gasto_fijo(id)` (baja lógica), `generar_gastos_fijos_pendientes()` (la llama el GET de movimientos, ver Arquitectura).
-- **Movimientos**: `insertar_movimiento(...)`, `actualizar_movimiento(...)`, `eliminar_movimiento(...)`.
-- **Reportes**: `resumen_mes(anio, mes)`, `evolucion_mensual(cant_meses)`, `gasto_por_categoria(anio, mes)`.
-- **Personas / Deudas**: `obtener_o_crear_persona(nombre)`, `crear_deuda(...)`, `saldar_persona(persona_id)`, `saldar_deudas(ids[])` (salda entradas puntuales), `pagar_movimiento(deuda_id, monto)` (registra una cuota, auto-salda si cubre el saldo), `eliminar_pago(pago_id)` (deshace una cuota, reabre la deuda si hacía falta).
+Todas reciben `p_usuario_id` como primer parámetro (salvo `sembrar_categorias_default`, que sólo opera sobre `categorias` de un usuario recién creado).
+- **Usuarios**: `sembrar_categorias_default(usuario_id)` — clona las categorías default al registrarse o en el primer login con Google.
+- **Categorías**: `eliminar_categoria(usuario_id, id)` (baja lógica).
+- **Gastos fijos**: `crear_gasto_fijo(usuario_id, ...)`, `eliminar_gasto_fijo(usuario_id, id)` (baja lógica), `generar_gastos_fijos_pendientes(usuario_id)` (la llama el GET de movimientos, ver Arquitectura).
+- **Movimientos**: `insertar_movimiento(usuario_id, ...)`, `actualizar_movimiento(usuario_id, ...)`, `eliminar_movimiento(usuario_id, ...)`.
+- **Reportes**: `resumen_mes(usuario_id, anio, mes)`, `evolucion_mensual(usuario_id, cant_meses)`, `gasto_por_categoria(usuario_id, anio, mes)`.
+- **Personas / Deudas**: `obtener_o_crear_persona(usuario_id, nombre)`, `crear_deuda(usuario_id, ...)`, `saldar_persona(usuario_id, persona_id)`, `saldar_deudas(usuario_id, ids[])` (salda entradas puntuales), `pagar_movimiento(usuario_id, deuda_id, monto)` (registra una cuota, auto-salda si cubre el saldo), `eliminar_pago(usuario_id, pago_id)` (deshace una cuota, reabre la deuda si hacía falta).
 
 ## Protocolo de Interacción y Ahorro de Tokens
 
