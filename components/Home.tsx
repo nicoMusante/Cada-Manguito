@@ -11,6 +11,7 @@ import {
 import { Header } from "@/components/Header";
 import { ResumenView } from "@/components/ResumenView";
 import { MovimientosView } from "@/components/MovimientosView";
+import { GraficosView } from "@/components/GraficosView";
 import { PersonasView, type PersonaActiva, type DeudaSaldada } from "@/components/PersonasView";
 import { GastosFijosView } from "@/components/GastosFijosView";
 import { BottomNav, TABS, type TabId } from "@/components/BottomNav";
@@ -198,6 +199,17 @@ export function Home({
       esMesActual={esMesActual}
     />
   );
+  const graficosPanel = (
+    <GraficosView
+      movimientos={movimientos}
+      loading={loading}
+      categorias={categorias}
+      periodoLabel={periodoLabel}
+      onMesAnterior={irMesAnterior}
+      onMesSiguiente={irMesSiguiente}
+      esMesActual={esMesActual}
+    />
+  );
   const personasPanel = (
     <PersonasView
       activas={personasActivas}
@@ -219,6 +231,7 @@ export function Home({
   const panelesPorTab: Record<TabId, React.ReactNode> = {
     resumen: resumenPanel,
     movimientos: movimientosPanel,
+    graficos: graficosPanel,
     personas: personasPanel,
     fijos: fijosPanel,
   };
@@ -226,6 +239,7 @@ export function Home({
   const titles: Record<TabId, string | undefined> = {
     resumen: undefined,
     movimientos: "Movimientos",
+    graficos: "Gráficos",
     personas: "Personas",
     fijos: "Gastos fijos",
   };
@@ -261,7 +275,7 @@ export function Home({
               onIndexChange={(i) => setTab(TAB_IDS[i])}
               disabled={modalAbierto}
               onRefresh={refrescarSilencioso}
-              panels={[resumenPanel, movimientosPanel, personasPanel, fijosPanel]}
+              panels={TAB_IDS.map((id) => panelesPorTab[id])}
             />
           </div>
         </div>

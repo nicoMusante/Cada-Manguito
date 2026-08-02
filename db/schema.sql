@@ -180,6 +180,24 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Recicla el id de usuario: después de cualquier borrado, resincroniza la
+-- secuencia de la identity column al MAX(id) actual. Así, si se borra la
+-- cuenta con el id más alto, el próximo alta vuelve a usar ese mismo id en
+-- vez de dejarlo perdido para siempre (sólo relevante en la cola: borrar un
+-- id intermedio no genera ningún efecto, la secuencia sigue igual).
+CREATE OR REPLACE FUNCTION reciclar_id_usuario() RETURNS trigger AS $$
+BEGIN
+    PERFORM setval(pg_get_serial_sequence('usuarios', 'id'), COALESCE((SELECT MAX(id) FROM usuarios), 1));
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_reciclar_id_usuario ON usuarios;
+CREATE TRIGGER trg_reciclar_id_usuario
+    AFTER DELETE ON usuarios
+    FOR EACH STATEMENT
+    EXECUTE FUNCTION reciclar_id_usuario();
+
 -- ========================= FUNCIONES: CATEGORIAS =========================
 
 -- Baja lógica: no se borra la fila (los movimientos históricos siguen

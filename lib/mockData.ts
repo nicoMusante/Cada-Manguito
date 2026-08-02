@@ -129,4 +129,3 @@ export const yoDebo = Math.abs(personas.filter((p) => p.neto < 0).reduce((a, p) 
 
 export const fmt = (n: number) =>
   n.toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
-export const fmtShort = (n: number) => "$" + (Math.abs(n) / 1000).toFixed(0) + "k";

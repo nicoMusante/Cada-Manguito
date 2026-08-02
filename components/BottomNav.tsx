@@ -1,12 +1,13 @@
 "use client";
 
-import { Wallet, List, Users, Repeat } from "lucide-react";
+import { Wallet, List, Users, Repeat, PieChart } from "lucide-react";
 
-export type TabId = "resumen" | "movimientos" | "personas" | "fijos";
+export type TabId = "resumen" | "movimientos" | "personas" | "fijos" | "graficos";
 
 export const TABS: { id: TabId; label: string; icon: typeof Wallet }[] = [
   { id: "resumen", label: "Resumen", icon: Wallet },
   { id: "movimientos", label: "Movimientos", icon: List },
+  { id: "graficos", label: "Gráficos", icon: PieChart },
   { id: "personas", label: "Personas", icon: Users },
   { id: "fijos", label: "Fijos", icon: Repeat },
 ];

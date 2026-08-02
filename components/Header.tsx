@@ -12,8 +12,6 @@ export function Header({
   usuario: { nombre: string; email: string };
   onOpenTema: () => void; onOpenNuevo: () => void;
 }) {
-  const inicial = usuario.nombre.trim().charAt(0).toUpperCase() || "?";
-
   return (
     <div className="px-5 lg:px-0 pt-8 lg:pt-0 flex items-center justify-between">
       {title ? (
@@ -23,8 +21,8 @@ export function Header({
         </div>
       ) : (
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 lg:w-12 lg:h-12 rounded-full flex items-center justify-center text-primary-foreground font-semibold lg:text-lg bg-primary">
-            {inicial}
+          <div className="w-11 h-11 lg:w-12 lg:h-12 rounded-full flex items-center justify-center text-[21px] lg:text-[24px] bg-primary">
+            👋
           </div>
           <div>
             <p className="text-[11.5px] lg:text-[13px] text-muted-foreground">Buenas tardes</p>
