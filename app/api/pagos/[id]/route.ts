@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { getUsuarioId, noAutenticado } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -7,10 +8,13 @@ export const dynamic = "force-dynamic";
 // saldado la deuda, la reabre.
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
   try {
+    const usuarioId = await getUsuarioId();
+    if (!usuarioId) return noAutenticado();
+
     const id = Number(params.id);
     if (!id) return NextResponse.json({ error: "Id inválido" }, { status: 400 });
 
-    await sql`SELECT eliminar_pago(${id})`;
+    await sql`SELECT eliminar_pago(${usuarioId}, ${id})`;
 
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { getUsuarioId, noAutenticado } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -8,6 +9,9 @@ export const revalidate = 0;
 // mes en curso si no se pasa), usando la vista v_movimientos.
 export async function GET(request: Request) {
   try {
+    const usuarioId = await getUsuarioId();
+    if (!usuarioId) return noAutenticado();
+
     const { searchParams } = new URL(request.url);
     const periodoActual = new Date().toISOString().slice(0, 7);
     const periodo = searchParams.get("periodo") || periodoActual;
@@ -15,13 +19,13 @@ export async function GET(request: Request) {
     // si se está pidiendo el mes en curso, primero genero los movimientos de
     // los gastos fijos que ya cumplieron su día y todavía no se generaron
     if (periodo === periodoActual) {
-      await sql`SELECT generar_gastos_fijos_pendientes()`;
+      await sql`SELECT generar_gastos_fijos_pendientes(${usuarioId})`;
     }
 
     const rows = await sql`
       SELECT id, categoria_id, descripcion, categoria, tipo, color_hex, icono, monto, fecha
       FROM v_movimientos
-      WHERE periodo = ${periodo}
+      WHERE usuario_id = ${usuarioId} AND periodo = ${periodo}
       ORDER BY fecha DESC, id DESC
     `;
     return NextResponse.json(rows, { headers: { "Cache-Control": "no-store, max-age=0" } });
@@ -35,6 +39,9 @@ export async function GET(request: Request) {
 // vinculada si el gasto fue compartido con alguien.
 export async function POST(request: Request) {
   try {
+    const usuarioId = await getUsuarioId();
+    if (!usuarioId) return noAutenticado();
+
     const body = await request.json();
     const { categoria_id, descripcion, monto, fecha, compartir } = body;
 
@@ -46,7 +53,7 @@ export async function POST(request: Request) {
     }
 
     const rows = await sql`
-      SELECT insertar_movimiento(${categoria_id}, ${descripcion}, ${monto}, ${fecha ?? null}) AS id
+      SELECT insertar_movimiento(${usuarioId}, ${categoria_id}, ${descripcion}, ${monto}, ${fecha ?? null}) AS id
     `;
     const movimientoId = rows[0].id;
 
@@ -55,7 +62,7 @@ export async function POST(request: Request) {
     if (compartir?.persona_nombre?.trim() && compartir?.monto) {
       await sql`
         SELECT crear_deuda(
-          ${compartir.persona_nombre.trim()}, 'ME_DEBEN', ${compartir.monto},
+          ${usuarioId}, ${compartir.persona_nombre.trim()}, 'ME_DEBEN', ${compartir.monto},
           ${descripcion}, ${fecha ?? null}, ${movimientoId}
         )
       `;

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { getUsuarioId, noAutenticado } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -7,10 +8,13 @@ export const revalidate = 0;
 // GET /api/categorias → categorías activas, para poblar el formulario de nuevo movimiento
 export async function GET() {
   try {
+    const usuarioId = await getUsuarioId();
+    if (!usuarioId) return noAutenticado();
+
     const rows = await sql`
       SELECT id, nombre, tipo, color_hex, icono
       FROM categorias
-      WHERE activo = true
+      WHERE activo = true AND usuario_id = ${usuarioId}
       ORDER BY tipo, nombre
     `;
     return NextResponse.json(rows, { headers: { "Cache-Control": "no-store, max-age=0" } });
@@ -23,6 +27,9 @@ export async function GET() {
 // POST /api/categorias → crea una categoría nueva
 export async function POST(request: Request) {
   try {
+    const usuarioId = await getUsuarioId();
+    if (!usuarioId) return noAutenticado();
+
     const body = await request.json();
     const { nombre, tipo, color_hex, icono } = body;
 
@@ -34,8 +41,8 @@ export async function POST(request: Request) {
     }
 
     const rows = await sql`
-      INSERT INTO categorias (nombre, tipo, color_hex, icono)
-      VALUES (${nombre.trim()}, ${tipo}, ${color_hex ?? null}, ${icono ?? null})
+      INSERT INTO categorias (usuario_id, nombre, tipo, color_hex, icono)
+      VALUES (${usuarioId}, ${nombre.trim()}, ${tipo}, ${color_hex ?? null}, ${icono ?? null})
       RETURNING id
     `;
 

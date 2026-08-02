@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { getUsuarioId, noAutenticado } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 // PATCH /api/movimientos/:id → edita un movimiento existente
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
+    const usuarioId = await getUsuarioId();
+    if (!usuarioId) return noAutenticado();
+
     const id = Number(params.id);
     if (!id) {
       return NextResponse.json({ error: "Id inválido" }, { status: 400 });
@@ -22,7 +26,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     await sql`
-      SELECT actualizar_movimiento(${id}, ${categoria_id}, ${descripcion}, ${monto}, ${fecha ?? null})
+      SELECT actualizar_movimiento(${usuarioId}, ${id}, ${categoria_id}, ${descripcion}, ${monto}, ${fecha ?? null})
     `;
 
     return NextResponse.json({ ok: true });
@@ -35,12 +39,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 // DELETE /api/movimientos/:id → elimina un movimiento
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
   try {
+    const usuarioId = await getUsuarioId();
+    if (!usuarioId) return noAutenticado();
+
     const id = Number(params.id);
     if (!id) {
       return NextResponse.json({ error: "Id inválido" }, { status: 400 });
     }
 
-    await sql`SELECT eliminar_movimiento(${id})`;
+    await sql`SELECT eliminar_movimiento(${usuarioId}, ${id})`;
 
     return NextResponse.json({ ok: true });
   } catch (error) {

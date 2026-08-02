@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { getUsuarioId, noAutenticado } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +8,9 @@ export const dynamic = "force-dynamic";
 // total del saldo pendiente) de una entrada de deuda puntual.
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
+    const usuarioId = await getUsuarioId();
+    if (!usuarioId) return noAutenticado();
+
     const id = Number(params.id);
     if (!id) return NextResponse.json({ error: "Id inválido" }, { status: 400 });
 
@@ -16,7 +20,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: "El monto tiene que ser mayor a 0." }, { status: 400 });
     }
 
-    await sql`SELECT pagar_movimiento(${id}, ${monto})`;
+    await sql`SELECT pagar_movimiento(${usuarioId}, ${id}, ${monto})`;
 
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (error) {

@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { getUsuarioId, noAutenticado } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/deudas → crea una deuda nueva. Si la persona no existe, se crea sola.
 export async function POST(request: Request) {
   try {
+    const usuarioId = await getUsuarioId();
+    if (!usuarioId) return noAutenticado();
+
     const body = await request.json();
     const { persona_nombre, tipo, monto, descripcion, fecha, movimiento_id } = body;
 
@@ -20,7 +24,7 @@ export async function POST(request: Request) {
     }
 
     const rows = await sql`
-      SELECT crear_deuda(${persona_nombre.trim()}, ${tipo}, ${monto}, ${descripcion.trim()}, ${fecha ?? null}, ${movimiento_id ?? null}) AS id
+      SELECT crear_deuda(${usuarioId}, ${persona_nombre.trim()}, ${tipo}, ${monto}, ${descripcion.trim()}, ${fecha ?? null}, ${movimiento_id ?? null}) AS id
     `;
 
     return NextResponse.json({ id: rows[0].id }, { status: 201 });

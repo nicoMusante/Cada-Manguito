@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { getUsuarioId, noAutenticado } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -7,12 +8,15 @@ export const revalidate = 0;
 // GET /api/gastos-fijos → gastos fijos activos, con la categoría resuelta
 export async function GET() {
   try {
+    const usuarioId = await getUsuarioId();
+    if (!usuarioId) return noAutenticado();
+
     const rows = await sql`
       SELECT gf.id, gf.categoria_id, gf.descripcion, gf.monto, gf.dia_mes,
              c.nombre AS categoria, c.color_hex, c.icono
       FROM gastos_fijos gf
       JOIN categorias c ON c.id = gf.categoria_id
-      WHERE gf.activo = true
+      WHERE gf.activo = true AND gf.usuario_id = ${usuarioId}
       ORDER BY gf.dia_mes, gf.descripcion
     `;
     return NextResponse.json(rows, { headers: { "Cache-Control": "no-store, max-age=0" } });
@@ -25,6 +29,9 @@ export async function GET() {
 // POST /api/gastos-fijos → crea un gasto fijo nuevo
 export async function POST(request: Request) {
   try {
+    const usuarioId = await getUsuarioId();
+    if (!usuarioId) return noAutenticado();
+
     const body = await request.json();
     const { categoria_id, descripcion, monto, dia_mes } = body;
 
@@ -36,7 +43,7 @@ export async function POST(request: Request) {
     }
 
     const rows = await sql`
-      SELECT crear_gasto_fijo(${categoria_id}, ${descripcion.trim()}, ${monto}, ${dia_mes ?? 1}) AS id
+      SELECT crear_gasto_fijo(${usuarioId}, ${categoria_id}, ${descripcion.trim()}, ${monto}, ${dia_mes ?? 1}) AS id
     `;
 
     return NextResponse.json({ id: rows[0].id }, { status: 201 });
