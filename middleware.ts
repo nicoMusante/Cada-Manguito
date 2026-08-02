@@ -5,8 +5,13 @@ import { authConfig } from "./auth.config";
 // las rutas de /api se excluyen del matcher: cada una chequea su propia
 // sesión y devuelve 401 en vez de redirigir (un fetch no puede seguir un
 // redirect a una página HTML como si fuera la respuesta esperada).
+// también excluyo el manifest, el service worker y los íconos: chrome los
+// pide para decidir si la app es instalable y necesita la respuesta real
+// (json/js/png), no un redirect a /login si todavía no hay sesión.
 export const { auth: middleware } = NextAuth(authConfig);
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icon-192.png|icon-512.png).*)",
+  ],
 };
