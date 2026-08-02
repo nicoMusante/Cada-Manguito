@@ -10,10 +10,283 @@ html, body {
   overscroll-behavior-y: none;
 }
 
-body {
-  background-color: #EDE9DE;
-}
-
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/*
+  cada tema define el mismo set de variables semánticas (formato "H S% L%",
+  sin hsl() alrededor, para que tailwind pueda aplicarle opacidad con /50 etc).
+  :root sin data-theme cae en el tema oscuro, que es el default de Home.tsx,
+  así evitamos un flash al tema claro antes de que el useEffect aplique el
+  data-theme real.
+*/
+@layer base {
+  :root,
+  [data-theme="dark"] {
+    --background: 30 35% 7%;
+    --foreground: 36 58% 91%;
+    --card: 25 33% 10%;
+    --card-foreground: 36 58% 91%;
+    --popover: 25 33% 10%;
+    --popover-foreground: 36 58% 91%;
+    --primary: 22 72% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 29 32% 15%;
+    --secondary-foreground: 36 58% 91%;
+    --muted: 29 32% 15%;
+    --muted-foreground: 31 25% 60%;
+    --accent: 29 32% 15%;
+    --accent-foreground: 36 58% 91%;
+    --destructive: 22 72% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 29 32% 17%;
+    --input: 29 32% 15%;
+    --ring: 22 72% 56%;
+    --income: 90 39% 62%;
+    --income-foreground: 0 0% 100%;
+    --income-soft: 108 19% 16%;
+    --expense: 22 72% 56%;
+    --expense-foreground: 0 0% 100%;
+    --expense-soft: 26 39% 17%;
+    --radius: 1rem;
+  }
+
+  [data-theme="light"] {
+    --background: 44 29% 90%;
+    --foreground: 26 32% 17%;
+    --card: 32 65% 95%;
+    --card-foreground: 26 32% 17%;
+    --popover: 32 65% 95%;
+    --popover-foreground: 26 32% 17%;
+    --primary: 17 59% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 34 49% 91%;
+    --secondary-foreground: 26 32% 17%;
+    --muted: 34 49% 91%;
+    --muted-foreground: 29 20% 57%;
+    --accent: 34 49% 91%;
+    --accent-foreground: 26 32% 17%;
+    --destructive: 17 59% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 35 52% 88%;
+    --input: 34 49% 91%;
+    --ring: 17 59% 45%;
+    --income: 90 33% 36%;
+    --income-foreground: 0 0% 100%;
+    --income-soft: 74 31% 87%;
+    --expense: 17 59% 45%;
+    --expense-foreground: 0 0% 100%;
+    --expense-soft: 30 62% 87%;
+  }
+
+  [data-theme="yellow"] {
+    --background: 47 87% 88%;
+    --foreground: 46 76% 16%;
+    --card: 46 100% 94%;
+    --card-foreground: 46 76% 16%;
+    --popover: 46 100% 94%;
+    --popover-foreground: 46 76% 16%;
+    --primary: 43 80% 46%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 47 87% 88%;
+    --secondary-foreground: 46 76% 16%;
+    --muted: 47 87% 88%;
+    --muted-foreground: 46 33% 46%;
+    --accent: 47 87% 88%;
+    --accent-foreground: 46 76% 16%;
+    --destructive: 43 89% 38%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 49 79% 81%;
+    --input: 47 87% 88%;
+    --ring: 43 80% 46%;
+    --income: 80 60% 35%;
+    --income-foreground: 0 0% 100%;
+    --income-soft: 69 59% 85%;
+    --expense: 43 89% 38%;
+    --expense-foreground: 0 0% 100%;
+    --expense-soft: 44 81% 79%;
+  }
+
+  [data-theme="navy"] {
+    --background: 213 52% 8%;
+    --foreground: 212 39% 94%;
+    --card: 216 50% 12%;
+    --card-foreground: 212 39% 94%;
+    --popover: 216 50% 12%;
+    --popover-foreground: 212 39% 94%;
+    --primary: 211 47% 44%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 45% 19%;
+    --secondary-foreground: 212 39% 94%;
+    --muted: 215 45% 19%;
+    --muted-foreground: 214 26% 65%;
+    --accent: 215 45% 19%;
+    --accent-foreground: 212 39% 94%;
+    --destructive: 17 62% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 216 44% 22%;
+    --input: 215 45% 19%;
+    --ring: 211 47% 44%;
+    --income: 141 38% 59%;
+    --income-foreground: 0 0% 100%;
+    --income-soft: 154 32% 15%;
+    --expense: 17 62% 60%;
+    --expense-foreground: 0 0% 100%;
+    --expense-soft: 265 27% 17%;
+  }
+
+  /* grafito neutro casi negro, acento celeste — pensado para uso en poca luz */
+  [data-theme="medianoche"] {
+    --background: 222 20% 6%;
+    --foreground: 210 25% 94%;
+    --card: 222 18% 9%;
+    --card-foreground: 210 25% 94%;
+    --popover: 222 18% 9%;
+    --popover-foreground: 210 25% 94%;
+    --primary: 199 89% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 16% 14%;
+    --secondary-foreground: 210 25% 94%;
+    --muted: 222 16% 14%;
+    --muted-foreground: 215 14% 62%;
+    --accent: 222 16% 14%;
+    --accent-foreground: 210 25% 94%;
+    --destructive: 16 75% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 16% 17%;
+    --input: 222 16% 14%;
+    --ring: 199 89% 56%;
+    --income: 152 45% 55%;
+    --income-foreground: 0 0% 100%;
+    --income-soft: 152 30% 14%;
+    --expense: 16 75% 58%;
+    --expense-foreground: 0 0% 100%;
+    --expense-soft: 16 40% 16%;
+  }
+
+  /* verde-negro profundo, acento dorado */
+  [data-theme="bosque"] {
+    --background: 155 28% 6%;
+    --foreground: 100 20% 93%;
+    --card: 155 24% 9%;
+    --card-foreground: 100 20% 93%;
+    --popover: 155 24% 9%;
+    --popover-foreground: 100 20% 93%;
+    --primary: 38 85% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 155 20% 13%;
+    --secondary-foreground: 100 20% 93%;
+    --muted: 155 20% 13%;
+    --muted-foreground: 130 12% 60%;
+    --accent: 155 20% 13%;
+    --accent-foreground: 100 20% 93%;
+    --destructive: 12 70% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 155 20% 16%;
+    --input: 155 20% 13%;
+    --ring: 38 85% 55%;
+    --income: 145 50% 56%;
+    --income-foreground: 0 0% 100%;
+    --income-soft: 145 32% 14%;
+    --expense: 12 70% 56%;
+    --expense-foreground: 0 0% 100%;
+    --expense-soft: 12 38% 15%;
+  }
+
+  /* violeta-negro profundo, acento violeta más claro */
+  [data-theme="violeta"] {
+    --background: 265 30% 7%;
+    --foreground: 270 20% 94%;
+    --card: 265 26% 10%;
+    --card-foreground: 270 20% 94%;
+    --popover: 265 26% 10%;
+    --popover-foreground: 270 20% 94%;
+    --primary: 271 70% 62%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 265 22% 15%;
+    --secondary-foreground: 270 20% 94%;
+    --muted: 265 22% 15%;
+    --muted-foreground: 260 14% 64%;
+    --accent: 265 22% 15%;
+    --accent-foreground: 270 20% 94%;
+    --destructive: 14 72% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 265 22% 18%;
+    --input: 265 22% 15%;
+    --ring: 271 70% 62%;
+    --income: 150 45% 58%;
+    --income-foreground: 0 0% 100%;
+    --income-soft: 150 30% 15%;
+    --expense: 14 72% 58%;
+    --expense-foreground: 0 0% 100%;
+    --expense-soft: 14 40% 16%;
+  }
+
+  /* negro cálido con base dorada, acento amarillo vivo */
+  [data-theme="ambar"] {
+    --background: 45 40% 6%;
+    --foreground: 48 60% 92%;
+    --card: 45 35% 9%;
+    --card-foreground: 48 60% 92%;
+    --popover: 45 35% 9%;
+    --popover-foreground: 48 60% 92%;
+    --primary: 45 90% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 45 28% 14%;
+    --secondary-foreground: 48 60% 92%;
+    --muted: 45 28% 14%;
+    --muted-foreground: 45 18% 62%;
+    --accent: 45 28% 14%;
+    --accent-foreground: 48 60% 92%;
+    --destructive: 14 72% 57%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 45 28% 17%;
+    --input: 45 28% 14%;
+    --ring: 45 90% 55%;
+    --income: 145 48% 56%;
+    --income-foreground: 0 0% 100%;
+    --income-soft: 145 30% 14%;
+    --expense: 14 72% 57%;
+    --expense-foreground: 0 0% 100%;
+    --expense-soft: 14 40% 16%;
+  }
+
+  /* negro con base vino/borravino, acento rosa-carmesí */
+  [data-theme="vino"] {
+    --background: 350 35% 7%;
+    --foreground: 350 25% 94%;
+    --card: 350 30% 10%;
+    --card-foreground: 350 25% 94%;
+    --popover: 350 30% 10%;
+    --popover-foreground: 350 25% 94%;
+    --primary: 345 75% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 350 24% 15%;
+    --secondary-foreground: 350 25% 94%;
+    --muted: 350 24% 15%;
+    --muted-foreground: 345 14% 64%;
+    --accent: 350 24% 15%;
+    --accent-foreground: 350 25% 94%;
+    --destructive: 18 72% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 350 24% 18%;
+    --input: 350 24% 15%;
+    --ring: 345 75% 58%;
+    --income: 145 48% 57%;
+    --income-foreground: 0 0% 100%;
+    --income-soft: 145 30% 15%;
+    --expense: 18 72% 58%;
+    --expense-foreground: 0 0% 100%;
+    --expense-soft: 18 40% 16%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}

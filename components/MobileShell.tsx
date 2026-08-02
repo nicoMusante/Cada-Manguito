@@ -2,14 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import type { Theme } from "@/lib/theme";
 
 const PULL_THRESHOLD = 68;
 const MAX_PULL = 92;
 const INDICATOR_SIZE = 34;
 
 export function MobileShell({
-  t,
   header,
   panels,
   index,
@@ -17,7 +15,6 @@ export function MobileShell({
   disabled,
   onRefresh,
 }: {
-  t: Theme;
   header: React.ReactNode;
   panels: React.ReactNode[];
   index: number;
@@ -138,15 +135,11 @@ export function MobileShell({
           transition: settling && !refreshing ? "transform 0.25s ease" : "none",
         }}
       >
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center shadow-sm"
-          style={{ backgroundColor: t.surface }}
-        >
+        <div className="w-8 h-8 rounded-full flex items-center justify-center shadow-sm bg-secondary">
           <RefreshCw
             size={16}
-            className={refreshing ? "animate-spin" : ""}
+            className={`text-primary ${refreshing ? "animate-spin" : ""}`}
             style={{
-              color: t.avatarBg,
               transform: refreshing ? undefined : `rotate(${pullProgress * 360}deg)`,
               transition: refreshing ? undefined : "transform 0.05s linear",
             }}

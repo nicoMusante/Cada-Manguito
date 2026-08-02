@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { X, Check } from "lucide-react";
-import type { Theme } from "@/lib/theme";
 import { ICONS, ICON_OPTIONS } from "@/lib/icons";
+import { Button } from "@/components/ui/button";
 
 const COLORES = [
   "#2F6F5E", "#B8562F", "#8A6D3B", "#4A5D6B", "#6B4A6B", "#3E6B7A", "#5C7A3E", "#A63E3E",
@@ -11,11 +11,9 @@ const COLORES = [
 ];
 
 export function CategoriaModal({
-  t,
   onClose,
   onCreated,
 }: {
-  t: Theme;
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -61,19 +59,17 @@ export function CategoriaModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end lg:items-center justify-center"
-      style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+      className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/45"
       onClick={onClose}
     >
       <div
-        className="w-full lg:w-[420px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5"
-        style={{ backgroundColor: t.bg }}
+        className="w-full lg:w-[420px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5 bg-card"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
-          <p className="text-[15px] font-semibold" style={{ color: t.textPrimary }}>Nueva categoría</p>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: t.surface }}>
-            <X size={16} style={{ color: t.textPrimary }} />
+          <p className="text-[15px] font-semibold text-foreground">Nueva categoría</p>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-secondary text-foreground">
+            <X size={16} />
           </button>
         </div>
 
@@ -87,39 +83,40 @@ export function CategoriaModal({
             </div>
           </div>
 
-          <div className="flex rounded-full p-1" style={{ backgroundColor: t.surface }}>
+          <div className="flex rounded-full p-1 bg-secondary">
             <button
               type="button"
               onClick={() => setTipo("GASTO")}
-              className="flex-1 py-2 rounded-full text-[13px] font-medium transition"
-              style={{ backgroundColor: tipo === "GASTO" ? t.gastoAccent : "transparent", color: tipo === "GASTO" ? "white" : t.textSecondary }}
+              className={`flex-1 py-2 rounded-full text-[13px] font-medium transition ${
+                tipo === "GASTO" ? "bg-expense text-expense-foreground" : "text-muted-foreground"
+              }`}
             >
               Gasto
             </button>
             <button
               type="button"
               onClick={() => setTipo("INGRESO")}
-              className="flex-1 py-2 rounded-full text-[13px] font-medium transition"
-              style={{ backgroundColor: tipo === "INGRESO" ? t.ingresoAccent : "transparent", color: tipo === "INGRESO" ? "white" : t.textSecondary }}
+              className={`flex-1 py-2 rounded-full text-[13px] font-medium transition ${
+                tipo === "INGRESO" ? "bg-income text-income-foreground" : "text-muted-foreground"
+              }`}
             >
               Ingreso
             </button>
           </div>
 
           <div>
-            <label className="text-[11px] uppercase tracking-wide" style={{ color: t.textSecondary }}>Nombre</label>
+            <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Nombre</label>
             <input
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               placeholder="ej. Transporte"
-              className="w-full mt-1.5 rounded-xl px-3.5 py-2.5 text-[13.5px] outline-none"
-              style={{ backgroundColor: t.surface, color: t.textPrimary }}
+              className="w-full mt-1.5 rounded-xl px-3.5 py-2.5 text-[13.5px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
               autoFocus
             />
           </div>
 
           <div>
-            <label className="text-[11px] uppercase tracking-wide" style={{ color: t.textSecondary }}>Color</label>
+            <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Color</label>
             <div className="flex gap-2 flex-wrap mt-2">
               {COLORES.map((c) => (
                 <button
@@ -129,7 +126,7 @@ export function CategoriaModal({
                   className="w-8 h-8 rounded-full"
                   style={{
                     backgroundColor: c,
-                    outline: color === c ? `2px solid ${t.textPrimary}` : "none",
+                    outline: color === c ? "2px solid hsl(var(--foreground))" : "none",
                     outlineOffset: "2px",
                   }}
                   aria-label={c}
@@ -139,7 +136,7 @@ export function CategoriaModal({
           </div>
 
           <div>
-            <label className="text-[11px] uppercase tracking-wide" style={{ color: t.textSecondary }}>Ícono</label>
+            <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Ícono</label>
             <div className="flex gap-2 flex-wrap mt-2">
               {ICON_OPTIONS.map((key) => {
                 const Icon = ICONS[key];
@@ -151,27 +148,26 @@ export function CategoriaModal({
                     onClick={() => setIcono(key)}
                     className="w-9 h-9 rounded-full flex items-center justify-center border"
                     style={{
-                      borderColor: selected ? color : t.divider,
+                      borderColor: selected ? color : "hsl(var(--border))",
                       backgroundColor: selected ? color + "22" : "transparent",
                     }}
                   >
-                    <Icon size={15} style={{ color: selected ? color : t.textSecondary }} />
+                    <Icon size={15} style={{ color: selected ? color : "hsl(var(--muted-foreground))" }} />
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {error && <p className="text-[12px]" style={{ color: t.gastoAccent }}>{error}</p>}
+          {error && <p className="text-[12px] text-destructive">{error}</p>}
 
-          <button
+          <Button
             type="submit"
             disabled={enviando}
-            className="w-full rounded-xl py-3 text-[14px] font-medium flex items-center justify-center gap-2 text-white disabled:opacity-60"
-            style={{ backgroundColor: t.avatarBg }}
+            className="w-full rounded-xl py-3 h-auto text-[14px] font-medium"
           >
             <Check size={16} /> {enviando ? "Guardando..." : "Crear categoría"}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

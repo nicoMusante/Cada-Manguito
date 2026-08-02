@@ -2,18 +2,15 @@
 
 import { useRef, useState } from "react";
 import { MoreVertical } from "lucide-react";
-import type { Theme } from "@/lib/theme";
 import { type Movimiento, fmt } from "@/lib/mockData";
 
 const LONG_PRESS_MS = 220;
 
 export function MovimientoItem({
-  t,
   m,
   subtitle,
   onEdit,
 }: {
-  t: Theme;
   m: Movimiento;
   subtitle: string;
   onEdit: () => void;
@@ -48,14 +45,8 @@ export function MovimientoItem({
 
   return (
     <div
-      className="w-full flex items-center gap-3 py-2.5 border-b last:border-0 select-none"
-      style={{
-        borderColor: t.divider,
-        opacity: pressing ? 0.6 : 1,
-        transition: "opacity 0.15s",
-        userSelect: "none",
-        WebkitUserSelect: "none",
-      }}
+      className={`w-full flex items-center gap-3 py-2.5 border-b border-border last:border-0 select-none transition-opacity ${pressing ? "opacity-60" : "opacity-100"}`}
+      style={{ userSelect: "none", WebkitUserSelect: "none" }}
       onTouchStart={startPress}
       onTouchEnd={onTouchEnd}
       onTouchMove={cancelPress}
@@ -63,33 +54,25 @@ export function MovimientoItem({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div
-        className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-        style={{ backgroundColor: t.surface }}
-      >
-        <m.icon size={15} style={{ color: t.textPrimary }} />
+      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-muted">
+        <m.icon size={15} className="text-foreground" />
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium truncate" style={{ color: t.textPrimary }}>{m.desc}</p>
-        <p className="text-[10.5px]" style={{ color: t.textSecondary }}>{subtitle}</p>
+        <p className="text-[13px] font-medium truncate text-foreground">{m.desc}</p>
+        <p className="text-[10.5px] text-muted-foreground">{subtitle}</p>
       </div>
 
-      <p className="text-[13px] font-semibold" style={{ color: m.tipo === "in" ? t.ingresoAccent : t.textPrimary }}>
+      <p className={`text-[13px] font-semibold ${m.tipo === "in" ? "text-income" : "text-foreground"}`}>
         {m.tipo === "in" ? "+" : "-"}{fmt(Math.abs(m.monto))}
       </p>
 
       {/* Tres puntitos — solo visibles en desktop (hover) */}
       <button
         onClick={onEdit}
-        className="hidden lg:flex items-center justify-center w-7 h-7 rounded-full ml-1 transition"
-        style={{
-          opacity: hovered ? 1 : 0,
-          backgroundColor: hovered ? t.surface : "transparent",
-          color: t.textSecondary,
-          pointerEvents: hovered ? "auto" : "none",
-          transition: "opacity 0.15s",
-        }}
+        className={`hidden lg:flex items-center justify-center w-7 h-7 rounded-full ml-1 text-muted-foreground transition-opacity ${
+          hovered ? "opacity-100 bg-muted pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
         tabIndex={hovered ? 0 : -1}
         aria-label="Editar o eliminar"
       >

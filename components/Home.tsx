@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { THEMES, type ThemeName } from "@/lib/theme";
+import type { ThemeName } from "@/lib/theme";
 import {
   mapMovimiento, mapCategoria, mapGastoFijo,
   type Movimiento, type MovimientoRow,
@@ -28,9 +28,15 @@ type ModalState = { mode: "closed" } | { mode: "new" } | { mode: "edit"; movimie
 
 const TAB_IDS = TABS.map((t) => t.id) as TabId[];
 
-export function Home({ usuario }: { usuario: { nombre: string; email: string } }) {
+export function Home({
+  usuario,
+  temaInicial,
+}: {
+  usuario: { nombre: string; email: string };
+  temaInicial: ThemeName;
+}) {
   const [tab, setTab] = useState<TabId>("resumen");
-  const [themeName, setThemeName] = useState<ThemeName>("dark");
+  const [themeName, setThemeName] = useState<ThemeName>(temaInicial);
   const [periodo, setPeriodo] = useState(periodoActual());
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [categorias, setCategorias] = useState<CategoriaConId[]>([]);
@@ -46,7 +52,13 @@ export function Home({ usuario }: { usuario: { nombre: string; email: string } }
   const [gastoFijoModalAbierto, setGastoFijoModalAbierto] = useState(false);
   const [temaModalAbierto, setTemaModalAbierto] = useState(false);
   const [personaDetalleId, setPersonaDetalleId] = useState<number | null>(null);
-  const t = THEMES[themeName];
+
+  // el tema se aplica como data-theme en <html> — las variables CSS de cada
+  // variante viven en app/globals.css y las consume todo el árbol vía clases
+  // tailwind (bg-background, text-foreground, etc), sin pasar props de theme
+  useEffect(() => {
+    document.documentElement.dataset.theme = themeName;
+  }, [themeName]);
 
   const cargarMovimientos = useCallback(() => {
     setLoading(true);
@@ -111,6 +123,15 @@ export function Home({ usuario }: { usuario: { nombre: string; email: string } }
     cargarMovimientos();
   }, [cargarMovimientos]);
 
+  const handleSelectTema = (nombre: ThemeName) => {
+    setThemeName(nombre);
+    fetch("/api/usuario", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tema: nombre }),
+    }).catch((err) => console.error("Error al guardar el tema:", err));
+  };
+
   const irMesAnterior = () => setPeriodo((p) => sumarMeses(p, -1));
   const irMesSiguiente = () => setPeriodo((p) => sumarMeses(p, 1));
   const esMesActual = periodo === periodoActual();
@@ -152,7 +173,6 @@ export function Home({ usuario }: { usuario: { nombre: string; email: string } }
 
   const resumenPanel = (
     <ResumenView
-      t={t}
       movimientos={movimientos}
       loading={loading}
       categorias={categorias}
@@ -169,7 +189,6 @@ export function Home({ usuario }: { usuario: { nombre: string; email: string } }
   );
   const movimientosPanel = (
     <MovimientosView
-      t={t}
       movimientos={movimientos}
       loading={loading}
       onSelectMovimiento={abrirEdicion}
@@ -181,7 +200,6 @@ export function Home({ usuario }: { usuario: { nombre: string; email: string } }
   );
   const personasPanel = (
     <PersonasView
-      t={t}
       activas={personasActivas}
       saldadas={personasSaldadas}
       loading={loadingPersonas}
@@ -191,7 +209,6 @@ export function Home({ usuario }: { usuario: { nombre: string; email: string } }
   );
   const fijosPanel = (
     <GastosFijosView
-      t={t}
       gastosFijos={gastosFijos}
       loading={loadingGastosFijos}
       onEliminar={handleEliminarGastoFijo}
@@ -224,22 +241,21 @@ export function Home({ usuario }: { usuario: { nombre: string; email: string } }
     gastoFijoModalAbierto || temaModalAbierto || personaDetalleId !== null;
 
   return (
-    <main style={{ backgroundColor: t.outerBg, minHeight: "100vh" }}>
+    <main className="min-h-screen bg-background">
       <div className="lg:max-w-6xl lg:mx-auto lg:py-10 lg:px-8">
-        <div className="min-h-screen lg:min-h-0 lg:rounded-[28px] lg:flex lg:gap-8 lg:p-8" style={{ backgroundColor: t.bg }}>
+        <div className="min-h-screen lg:min-h-0 lg:rounded-[28px] lg:flex lg:gap-8 lg:p-8 bg-card">
           {/* Desktop: sidebar + panel único */}
-          <Sidebar t={t} active={tab} onChange={setTab} />
+          <Sidebar active={tab} onChange={setTab} />
           <div className="hidden lg:block flex-1">
-            <Header t={t} title={titles[tab]} themeName={themeName} usuario={usuario} onOpenTema={() => setTemaModalAbierto(true)} onOpenNuevo={abrirNuevo} />
+            <Header title={titles[tab]} themeName={themeName} usuario={usuario} onOpenTema={() => setTemaModalAbierto(true)} onOpenNuevo={abrirNuevo} />
             {panelesPorTab[tab]}
           </div>
 
           {/* Mobile: swipe entre pestañas en cualquier parte de la pantalla + pull-to-refresh */}
           <div className="lg:hidden">
             <MobileShell
-              t={t}
               header={
-                <Header t={t} title={titles[tab]} themeName={themeName} usuario={usuario} onOpenTema={() => setTemaModalAbierto(true)} onOpenNuevo={abrirNuevo} />
+                <Header title={titles[tab]} themeName={themeName} usuario={usuario} onOpenTema={() => setTemaModalAbierto(true)} onOpenNuevo={abrirNuevo} />
               }
               index={TAB_IDS.indexOf(tab)}
               onIndexChange={(i) => setTab(TAB_IDS[i])}
@@ -251,11 +267,10 @@ export function Home({ usuario }: { usuario: { nombre: string; email: string } }
         </div>
       </div>
 
-      <BottomNav t={t} active={tab} onChange={setTab} />
+      <BottomNav active={tab} onChange={setTab} />
 
       {modal.mode !== "closed" && (
         <MovimientoModal
-          t={t}
           movimiento={modal.mode === "edit" ? modal.movimiento : null}
           onClose={() => setModal({ mode: "closed" })}
           onSaved={alGuardarMovimiento}
@@ -263,24 +278,23 @@ export function Home({ usuario }: { usuario: { nombre: string; email: string } }
       )}
 
       {categoriaModalAbierta && (
-        <CategoriaModal t={t} onClose={() => setCategoriaModalAbierta(false)} onCreated={cargarCategorias} />
+        <CategoriaModal onClose={() => setCategoriaModalAbierta(false)} onCreated={cargarCategorias} />
       )}
 
       {deudaModalAbierta && (
-        <DeudaModal t={t} onClose={() => setDeudaModalAbierta(false)} onSaved={cargarPersonas} />
+        <DeudaModal onClose={() => setDeudaModalAbierta(false)} onSaved={cargarPersonas} />
       )}
 
       {gastoFijoModalAbierto && (
-        <GastoFijoModal t={t} onClose={() => setGastoFijoModalAbierto(false)} onSaved={alGuardarGastoFijo} />
+        <GastoFijoModal onClose={() => setGastoFijoModalAbierto(false)} onSaved={alGuardarGastoFijo} />
       )}
 
       {temaModalAbierto && (
-        <ThemeModal t={t} current={themeName} onSelect={setThemeName} onClose={() => setTemaModalAbierto(false)} />
+        <ThemeModal current={themeName} onSelect={handleSelectTema} onClose={() => setTemaModalAbierto(false)} />
       )}
 
       {personaDetalleId !== null && (
         <PersonaDetalleModal
-          t={t}
           personaId={personaDetalleId}
           onClose={() => setPersonaDetalleId(null)}
           onChanged={cargarPersonas}

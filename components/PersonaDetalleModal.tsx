@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { X, Check, Trash2, Square, CheckSquare, ChevronDown, ChevronUp, Plus } from "lucide-react";
-import type { Theme } from "@/lib/theme";
+import { Button } from "@/components/ui/button";
 
 type Pago = { id: number; monto: string; fecha: string };
 
@@ -21,12 +21,10 @@ type DeudaHistorial = {
 const fmt = (n: number) => n.toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
 
 export function PersonaDetalleModal({
-  t,
   personaId,
   onClose,
   onChanged,
 }: {
-  t: Theme;
   personaId: number;
   onClose: () => void;
   onChanged: () => void;
@@ -172,45 +170,44 @@ export function PersonaDetalleModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end lg:items-center justify-center"
-      style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+      className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/45"
       onClick={onClose}
     >
       <div
-        className="w-full lg:w-[440px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5 max-h-[85vh] overflow-y-auto"
-        style={{ backgroundColor: t.bg }}
+        className="w-full lg:w-[440px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5 max-h-[85vh] overflow-y-auto bg-card"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
             <div
-              className="w-9 h-9 rounded-full text-white flex items-center justify-center text-[12px] font-semibold"
-              style={{ backgroundColor: teDeben ? t.ingresoAccent : t.gastoAccent }}
+              className={`w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-semibold ${
+                teDeben ? "bg-income text-income-foreground" : "bg-expense text-expense-foreground"
+              }`}
             >
               {nombre[0] || "?"}
             </div>
             <div>
-              <p className="text-[14px] font-semibold" style={{ color: t.textPrimary }}>{nombre}</p>
+              <p className="text-[14px] font-semibold text-foreground">{nombre}</p>
               {neto !== 0 && (
-                <p className="text-[11px]" style={{ color: teDeben ? t.ingresoAccent : t.gastoAccent }}>
+                <p className={`text-[11px] ${teDeben ? "text-income" : "text-expense"}`}>
                   {teDeben ? "Te debe" : "Le debés"} {fmt(Math.abs(neto))}
                 </p>
               )}
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: t.surface }}>
-            <X size={16} style={{ color: t.textPrimary }} />
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-secondary text-foreground">
+            <X size={16} />
           </button>
         </div>
 
         {loading ? (
-          <p className="text-[12.5px]" style={{ color: t.textSecondary }}>Cargando...</p>
+          <p className="text-[12.5px] text-muted-foreground">Cargando...</p>
         ) : (
           <>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] tracking-wide uppercase" style={{ color: t.textSecondary }}>Historial</p>
+              <p className="text-[11px] tracking-wide uppercase text-muted-foreground">Historial</p>
               {seleccionados.size > 0 && (
-                <p className="text-[11px]" style={{ color: t.textSecondary }}>
+                <p className="text-[11px] text-muted-foreground">
                   {seleccionados.size} seleccionado{seleccionados.size > 1 ? "s" : ""} · {fmt(montoSeleccion)}
                 </p>
               )}
@@ -222,10 +219,10 @@ export function PersonaDetalleModal({
                 const pagado = Number(h.pagado);
                 const saldoPendiente = Number(h.monto) - pagado;
                 const expandido = expandidoId === h.id;
-                const accent = h.tipo === "ME_DEBEN" ? t.ingresoAccent : t.gastoAccent;
+                const accentClass = h.tipo === "ME_DEBEN" ? "text-income" : "text-expense";
 
                 return (
-                  <div key={h.id} className="border-b last:border-0" style={{ borderColor: t.divider }}>
+                  <div key={h.id} className="border-b border-border last:border-0">
                     <div className="flex items-center gap-3 py-2.5 group">
                       {seleccionable && (
                         <button
@@ -234,9 +231,9 @@ export function PersonaDetalleModal({
                           aria-label={marcado ? "Quitar de la selección" : "Seleccionar"}
                         >
                           {marcado ? (
-                            <CheckSquare size={18} style={{ color: teDeben ? t.ingresoAccent : t.gastoAccent }} />
+                            <CheckSquare size={18} className={teDeben ? "text-income" : "text-expense"} />
                           ) : (
-                            <Square size={18} style={{ color: t.textSecondary }} />
+                            <Square size={18} className="text-muted-foreground" />
                           )}
                         </button>
                       )}
@@ -246,28 +243,27 @@ export function PersonaDetalleModal({
                       >
                         <div className="flex-1 min-w-0">
                           <p
-                            className="text-[12.5px]"
-                            style={{ color: h.estado === "saldado" ? t.textSecondary : t.textPrimary, textDecoration: h.estado === "saldado" ? "line-through" : "none" }}
+                            className={`text-[12.5px] ${h.estado === "saldado" ? "text-muted-foreground line-through" : "text-foreground"}`}
                           >
                             {h.descripcion}
                           </p>
-                          <p className="text-[10px]" style={{ color: t.textSecondary }}>
+                          <p className="text-[10px] text-muted-foreground">
                             {new Date(h.fecha).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
                             {h.estado === "saldado" && " · saldado"}
                             {h.estado === "pendiente" && pagado > 0 && ` · ${h.tipo === "ME_DEBEN" ? "pagó" : "pagaste"} ${fmt(pagado)}`}
                           </p>
                         </div>
                         {expandido ? (
-                          <ChevronUp size={13} style={{ color: t.textSecondary }} />
+                          <ChevronUp size={13} className="text-muted-foreground" />
                         ) : (
-                          <ChevronDown size={13} style={{ color: t.textSecondary }} />
+                          <ChevronDown size={13} className="text-muted-foreground" />
                         )}
                       </button>
-                      <p className="text-[12.5px] font-semibold" style={{ color: h.estado === "saldado" ? t.textSecondary : accent }}>
+                      <p className={`text-[12.5px] font-semibold ${h.estado === "saldado" ? "text-muted-foreground" : accentClass}`}>
                         {h.tipo === "ME_DEBEN" ? "+" : "-"}{fmt(h.estado === "pendiente" ? saldoPendiente : Number(h.monto))}
                       </p>
                       <button onClick={() => handleDeleteEntry(h.id)} className="shrink-0" aria-label="Eliminar">
-                        <Trash2 size={13} style={{ color: t.textSecondary }} />
+                        <Trash2 size={13} className="text-muted-foreground" />
                       </button>
                     </div>
 
@@ -276,12 +272,12 @@ export function PersonaDetalleModal({
                         {h.pagos.length > 0 && (
                           <div className="space-y-1">
                             {h.pagos.map((pg) => (
-                              <div key={pg.id} className="flex items-center gap-2 text-[11.5px]" style={{ color: t.textSecondary }}>
+                              <div key={pg.id} className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
                                 <span className="flex-1">
                                   {new Date(pg.fecha).toLocaleDateString("es-AR", { day: "numeric", month: "short" })} — {fmt(Number(pg.monto))}
                                 </span>
                                 <button onClick={() => handleEliminarPago(pg.id)} aria-label="Deshacer pago">
-                                  <Trash2 size={12} style={{ color: t.textSecondary }} />
+                                  <Trash2 size={12} className="text-muted-foreground" />
                                 </button>
                               </div>
                             ))}
@@ -295,24 +291,24 @@ export function PersonaDetalleModal({
                               onChange={(e) => setMontoPago(e.target.value.replace(/[^0-9.]/g, ""))}
                               placeholder={`Saldo: ${fmt(saldoPendiente)}`}
                               inputMode="decimal"
-                              className="flex-1 rounded-xl px-3 py-2 text-[13px] outline-none"
-                              style={{ backgroundColor: t.surface, color: t.textPrimary }}
+                              className="flex-1 rounded-xl px-3 py-2 text-[13px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
                             />
                             <button
                               onClick={() => handleAgregarPago(h.id)}
                               disabled={enviandoPago}
-                              className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-60"
-                              style={{ backgroundColor: accent, color: t.bg }}
+                              className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-60 ${
+                                h.tipo === "ME_DEBEN" ? "bg-income text-income-foreground" : "bg-expense text-expense-foreground"
+                              }`}
                               aria-label="Agregar pago"
                             >
                               <Plus size={16} />
                             </button>
                           </div>
                         ) : h.pagos.length === 0 ? (
-                          <p className="text-[11px]" style={{ color: t.textSecondary }}>Se marcó como pagado directo, sin cuotas.</p>
+                          <p className="text-[11px] text-muted-foreground">Se marcó como pagado directo, sin cuotas.</p>
                         ) : null}
                         {errorPago && expandido && (
-                          <p className="text-[11px]" style={{ color: t.gastoAccent }}>{errorPago}</p>
+                          <p className="text-[11px] text-destructive">{errorPago}</p>
                         )}
                       </div>
                     )}
@@ -320,42 +316,44 @@ export function PersonaDetalleModal({
                 );
               })}
               {historial.length === 0 && (
-                <p className="text-[12px]" style={{ color: t.textSecondary }}>Sin movimientos todavía.</p>
+                <p className="text-[12px] text-muted-foreground">Sin movimientos todavía.</p>
               )}
             </div>
 
             {seleccionados.size > 0 ? (
               <div className="flex gap-2">
-                <button
+                <Button
                   onClick={() => setSeleccionados(new Set())}
-                  className="flex-1 rounded-xl py-3 text-[14px] font-medium"
-                  style={{ backgroundColor: t.surface, color: t.textPrimary }}
+                  variant="secondary"
+                  className="flex-1 rounded-xl py-3 h-auto text-[14px] font-medium shadow-none"
                 >
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleSaldarSeleccionados}
                   disabled={saldandoSeleccion}
-                  className="flex-1 rounded-xl py-3 text-[14px] font-medium flex items-center justify-center gap-2 disabled:opacity-60"
-                  style={{ backgroundColor: teDeben ? t.ingresoAccent : t.gastoAccent, color: t.bg }}
+                  className={`flex-1 rounded-xl py-3 h-auto text-[14px] font-medium ${
+                    teDeben ? "bg-income text-income-foreground hover:bg-income/90" : "bg-expense text-expense-foreground hover:bg-expense/90"
+                  }`}
                 >
                   <Check size={16} /> {saldandoSeleccion ? "Guardando..." : "Marcar como pagado"}
-                </button>
+                </Button>
               </div>
             ) : (
               neto !== 0 && (
-                <button
+                <Button
                   onClick={handleSaldar}
                   disabled={saldando}
-                  className="w-full rounded-xl py-3 text-[14px] font-medium flex items-center justify-center gap-2 disabled:opacity-60"
-                  style={{ backgroundColor: teDeben ? t.ingresoAccent : t.gastoAccent, color: t.bg }}
+                  className={`w-full rounded-xl py-3 h-auto text-[14px] font-medium ${
+                    teDeben ? "bg-income text-income-foreground hover:bg-income/90" : "bg-expense text-expense-foreground hover:bg-expense/90"
+                  }`}
                 >
                   <Check size={16} /> {saldando ? "Guardando..." : "Marcar todo como pagado"}
-                </button>
+                </Button>
               )
             )}
             {seleccionados.size === 0 && historial.some((h) => h.estado === "pendiente") && (
-              <p className="text-[10.5px] text-center mt-2" style={{ color: t.textSecondary }}>
+              <p className="text-[10.5px] text-center mt-2 text-muted-foreground">
                 Marcá el cuadrado para pagar un movimiento entero, o tocalo para pagarlo en cuotas.
               </p>
             )}

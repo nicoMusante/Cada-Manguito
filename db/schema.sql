@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     password_hash  VARCHAR(255),           -- null si sólo usa Google
     nombre         VARCHAR(80)  NOT NULL,
     google_id      VARCHAR(255) UNIQUE,
+    tema           VARCHAR(20)  NOT NULL DEFAULT 'dark',  -- preferencia de tema de UI, ver lib/theme.ts (ThemeName)
     creado_en      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -2,16 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { X, Check, Trash2 } from "lucide-react";
-import type { Theme } from "@/lib/theme";
 import { type CategoriaConId, type CategoriaRow, type Movimiento, mapCategoria } from "@/lib/mockData";
+import { Button } from "@/components/ui/button";
 
 export function MovimientoModal({
-  t,
   movimiento,
   onClose,
   onSaved,
 }: {
-  t: Theme;
   movimiento?: Movimiento | null; // si viene, es modo edición
   onClose: () => void;
   onSaved: () => void;
@@ -115,17 +113,15 @@ export function MovimientoModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end lg:items-center justify-center"
-      style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+      className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/45"
       onClick={onClose}
     >
       <div
-        className="w-full lg:w-[420px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5"
-        style={{ backgroundColor: t.bg }}
+        className="w-full lg:w-[420px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5 bg-card"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
-          <p className="text-[15px] font-semibold" style={{ color: t.textPrimary }}>
+          <p className="text-[15px] font-semibold text-foreground">
             {esEdicion ? "Editar movimiento" : "Nuevo movimiento"}
           </p>
           <div className="flex items-center gap-2">
@@ -133,78 +129,78 @@ export function MovimientoModal({
               <button
                 type="button"
                 onClick={() => setConfirmarBorrado(true)}
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: t.gastoCard }}
+                className="w-8 h-8 rounded-full flex items-center justify-center bg-expense-soft text-expense"
               >
-                <Trash2 size={15} style={{ color: t.gastoAccent }} />
+                <Trash2 size={15} />
               </button>
             )}
-            <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: t.surface }}>
-              <X size={16} style={{ color: t.textPrimary }} />
+            <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-secondary text-foreground">
+              <X size={16} />
             </button>
           </div>
         </div>
 
         {confirmarBorrado ? (
           <div className="space-y-4">
-            <p className="text-[13.5px]" style={{ color: t.textPrimary }}>
+            <p className="text-[13.5px] text-foreground">
               ¿Seguro que querés eliminar <strong>{movimiento?.desc}</strong>? Esta acción no se puede deshacer.
             </p>
-            {error && <p className="text-[12px]" style={{ color: t.gastoAccent }}>{error}</p>}
+            {error && <p className="text-[12px] text-destructive">{error}</p>}
             <div className="flex gap-2">
-              <button
+              <Button
                 type="button"
                 onClick={() => setConfirmarBorrado(false)}
-                className="flex-1 rounded-xl py-3 text-[14px] font-medium"
-                style={{ backgroundColor: t.surface, color: t.textPrimary }}
+                variant="secondary"
+                className="flex-1 rounded-xl py-3 h-auto text-[14px] font-medium shadow-none"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={handleDelete}
                 disabled={eliminando}
-                className="flex-1 rounded-xl py-3 text-[14px] font-medium text-white disabled:opacity-60"
-                style={{ backgroundColor: t.gastoAccent }}
+                variant="destructive"
+                className="flex-1 rounded-xl py-3 h-auto text-[14px] font-medium"
               >
                 {eliminando ? "Eliminando..." : "Sí, eliminar"}
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex bg-opacity-50 rounded-full p-1" style={{ backgroundColor: t.surface }}>
+            <div className="flex rounded-full p-1 bg-secondary">
               <button
                 type="button"
                 onClick={() => handleTipoChange("GASTO")}
-                className="flex-1 py-2 rounded-full text-[13px] font-medium transition"
-                style={{ backgroundColor: tipo === "GASTO" ? t.gastoAccent : "transparent", color: tipo === "GASTO" ? "white" : t.textSecondary }}
+                className={`flex-1 py-2 rounded-full text-[13px] font-medium transition ${
+                  tipo === "GASTO" ? "bg-expense text-expense-foreground" : "text-muted-foreground"
+                }`}
               >
                 Gasto
               </button>
               <button
                 type="button"
                 onClick={() => handleTipoChange("INGRESO")}
-                className="flex-1 py-2 rounded-full text-[13px] font-medium transition"
-                style={{ backgroundColor: tipo === "INGRESO" ? t.ingresoAccent : "transparent", color: tipo === "INGRESO" ? "white" : t.textSecondary }}
+                className={`flex-1 py-2 rounded-full text-[13px] font-medium transition ${
+                  tipo === "INGRESO" ? "bg-income text-income-foreground" : "text-muted-foreground"
+                }`}
               >
                 Ingreso
               </button>
             </div>
 
             <div>
-              <label className="text-[11px] uppercase tracking-wide" style={{ color: t.textSecondary }}>Categoría</label>
+              <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Categoría</label>
               <div className="flex gap-2 flex-wrap mt-2">
                 {categoriasFiltradas.map((c) => (
                   <button
                     type="button"
                     key={c.id}
                     onClick={() => setCategoriaId(c.id)}
-                    className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium border"
+                    className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium border text-foreground"
                     style={{
-                      borderColor: categoriaId === c.id ? c.color : t.divider,
+                      borderColor: categoriaId === c.id ? c.color : "hsl(var(--border))",
                       backgroundColor: categoriaId === c.id ? c.color + "22" : "transparent",
-                      color: t.textPrimary,
                     }}
                   >
                     <c.icon size={13} style={{ color: c.color }} />
@@ -212,36 +208,34 @@ export function MovimientoModal({
                   </button>
                 ))}
                 {categoriasFiltradas.length === 0 && (
-                  <p className="text-[12px]" style={{ color: t.textSecondary }}>Cargando categorías...</p>
+                  <p className="text-[12px] text-muted-foreground">Cargando categorías...</p>
                 )}
               </div>
             </div>
 
             <div>
-              <label className="text-[11px] uppercase tracking-wide" style={{ color: t.textSecondary }}>Descripción</label>
+              <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Descripción</label>
               <input
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
                 placeholder="ej. Palas y overgrips"
-                className="w-full mt-1.5 rounded-xl px-3.5 py-2.5 text-[13.5px] outline-none"
-                style={{ backgroundColor: t.surface, color: t.textPrimary }}
+                className="w-full mt-1.5 rounded-xl px-3.5 py-2.5 text-[13.5px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
               />
             </div>
 
             <div>
-              <label className="text-[11px] uppercase tracking-wide" style={{ color: t.textSecondary }}>Monto</label>
+              <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Monto</label>
               <input
                 value={monto}
                 onChange={(e) => setMonto(e.target.value.replace(/[^0-9.]/g, ""))}
                 placeholder="0"
                 inputMode="decimal"
-                className="w-full mt-1.5 rounded-xl px-3.5 py-2.5 text-[16px] font-semibold outline-none"
-                style={{ backgroundColor: t.surface, color: t.textPrimary }}
+                className="w-full mt-1.5 rounded-xl px-3.5 py-2.5 text-[16px] font-semibold outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
               />
             </div>
 
             {!esEdicion && tipo === "GASTO" && (
-              <div className="rounded-2xl p-3.5" style={{ backgroundColor: t.surface, border: `1px dashed ${t.textSecondary}55` }}>
+              <div className="rounded-2xl p-3.5 bg-secondary border border-dashed border-muted-foreground/30">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -249,7 +243,7 @@ export function MovimientoModal({
                     onChange={(e) => setCompartir(e.target.checked)}
                     className="w-4 h-4"
                   />
-                  <span className="text-[12.5px] font-medium" style={{ color: t.textPrimary }}>¿Lo compartiste con alguien?</span>
+                  <span className="text-[12.5px] font-medium text-foreground">¿Lo compartiste con alguien?</span>
                 </label>
                 {compartir && (
                   <div className="mt-3 space-y-2.5">
@@ -257,19 +251,17 @@ export function MovimientoModal({
                       value={personaCompartida}
                       onChange={(e) => setPersonaCompartida(e.target.value)}
                       placeholder="Nombre de la persona"
-                      className="w-full rounded-lg px-3 py-2 text-[13px] outline-none"
-                      style={{ backgroundColor: t.bg, color: t.textPrimary }}
+                      className="w-full rounded-lg px-3 py-2 text-[13px] outline-none bg-card text-foreground focus:ring-2 focus:ring-ring"
                     />
                     <input
                       value={montoCompartido}
                       onChange={(e) => setMontoCompartido(e.target.value.replace(/[^0-9.]/g, ""))}
                       placeholder="Cuánto te debe"
                       inputMode="decimal"
-                      className="w-full rounded-lg px-3 py-2 text-[13px] outline-none"
-                      style={{ backgroundColor: t.bg, color: t.textPrimary }}
+                      className="w-full rounded-lg px-3 py-2 text-[13px] outline-none bg-card text-foreground focus:ring-2 focus:ring-ring"
                     />
                     {personaCompartida.trim() && Number(montoCompartido) > 0 && (
-                      <p className="text-[10.5px]" style={{ color: t.ingresoAccent }}>
+                      <p className="text-[10.5px] text-income">
                         Se va a crear un pendiente: {personaCompartida.trim()} te debe ${Number(montoCompartido).toLocaleString("es-AR")}
                       </p>
                     )}
@@ -278,16 +270,15 @@ export function MovimientoModal({
               </div>
             )}
 
-            {error && <p className="text-[12px]" style={{ color: t.gastoAccent }}>{error}</p>}
+            {error && <p className="text-[12px] text-destructive">{error}</p>}
 
-            <button
+            <Button
               type="submit"
               disabled={enviando}
-              className="w-full rounded-xl py-3 text-[14px] font-medium flex items-center justify-center gap-2 text-white disabled:opacity-60"
-              style={{ backgroundColor: t.avatarBg }}
+              className="w-full rounded-xl py-3 h-auto text-[14px] font-medium"
             >
               <Check size={16} /> {enviando ? "Guardando..." : esEdicion ? "Guardar cambios" : "Guardar movimiento"}
-            </button>
+            </Button>
           </form>
         )}
       </div>
