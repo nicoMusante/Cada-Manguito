@@ -42,7 +42,9 @@ export function Header({
           <Plus size={17} style={{ color: t.textPrimary }} />
         </button>
         <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() => {
+            if (confirm("¿Cerrar sesión?")) signOut({ callbackUrl: "/login" });
+          }}
           className="w-9 h-9 rounded-full flex items-center justify-center"
           style={{ backgroundColor: t.surface }}
           title="Cerrar sesión"
