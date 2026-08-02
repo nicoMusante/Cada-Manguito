@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------
 -- ESQUEMA COMPLETO — Cada Manguito (PostgreSQL / Neon)
--- Consolidado al 31 Jul 2026. Idempotente: se puede correr de nuevo sin romper nada.
+-- Consolidado al 2 Ago 2026. Idempotente: se puede correr de nuevo sin romper nada.
 -- Multi-usuario: todas las tablas de datos (menos pagos_deuda) llevan
 -- usuario_id. Para una base ya existente de antes de esto, correr
 -- db/migracion_usuarios.sql (no idempotente, de un solo uso) en vez de
@@ -159,13 +159,22 @@ HAVING SUM(CASE WHEN d.tipo = 'ME_DEBEN' THEN (d.monto - COALESCE(pg.pagado, 0))
 CREATE OR REPLACE FUNCTION sembrar_categorias_default(p_usuario_id INTEGER) RETURNS VOID AS $$
 BEGIN
     INSERT INTO categorias (usuario_id, nombre, tipo, color_hex, icono) VALUES
-        (p_usuario_id, 'Sueldo',     'INGRESO', '#2F6F5E', 'wallet'),
-        (p_usuario_id, 'Freelance',  'INGRESO', '#3E7A63', 'wallet'),
-        (p_usuario_id, 'Padel',      'GASTO',   '#2F6F5E', 'dumbbell'),
-        (p_usuario_id, 'Casa',       'GASTO',   '#B8562F', 'home'),
-        (p_usuario_id, 'Servicios',  'GASTO',   '#8A6D3B', 'zap'),
-        (p_usuario_id, 'Comida',     'GASTO',   '#4A5D6B', 'coffee'),
-        (p_usuario_id, 'Compras',    'GASTO',   '#6B4A6B', 'shopping-bag')
+        (p_usuario_id, 'Sueldo',         'INGRESO', '#2F6F5E', 'wallet'),
+        (p_usuario_id, 'Freelance',      'INGRESO', '#3E7A63', 'wallet'),
+        (p_usuario_id, 'Otros ingresos', 'INGRESO', '#C9A227', 'wallet'),
+        (p_usuario_id, 'Padel',          'GASTO',   '#2F6F5E', 'dumbbell'),
+        (p_usuario_id, 'Casa',           'GASTO',   '#B8562F', 'home'),
+        (p_usuario_id, 'Servicios',      'GASTO',   '#8A6D3B', 'zap'),
+        (p_usuario_id, 'Comida',         'GASTO',   '#4A5D6B', 'coffee'),
+        (p_usuario_id, 'Compras',        'GASTO',   '#6B4A6B', 'shopping-bag'),
+        (p_usuario_id, 'Transporte',     'GASTO',   '#35507A', 'car'),
+        (p_usuario_id, 'Salud',          'GASTO',   '#A63E3E', 'heart'),
+        (p_usuario_id, 'Entretenimiento','GASTO',   '#4B4B8A', 'film'),
+        (p_usuario_id, 'Suscripciones',  'GASTO',   '#55606B', 'smartphone'),
+        (p_usuario_id, 'Regalos',        'GASTO',   '#8A4B6B', 'gift'),
+        (p_usuario_id, 'Ropa',           'GASTO',   '#9C4A2E', 'shirt'),
+        (p_usuario_id, 'Mascotas',       'GASTO',   '#2E5A3E', 'paw-print'),
+        (p_usuario_id, 'Educación',      'GASTO',   '#3E6B7A', 'graduation-cap')
     ON CONFLICT (nombre, usuario_id) DO NOTHING;
 END;
 $$ LANGUAGE plpgsql;

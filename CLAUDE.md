@@ -17,9 +17,11 @@ Node vía nvm en `~/.nvm/versions/node/v24.18.0/bin` — no siempre está en el 
 
 No hay suite de tests configurada. Requiere `.env.local` con `DATABASE_URL` apuntando a una base Neon con el esquema de abajo ya creado, `AUTH_SECRET` (generar con `npx auth secret`) y, opcionalmente, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` para habilitar login con Google — sin esas dos el login por mail/contraseña sigue funcionando igual (`auth.ts` sólo agrega el provider de Google si están completas). No hay migraciones en el repo — el esquema vive directamente en Neon, pero `db/schema.sql` guarda un snapshot consolidado e idempotente (tablas, vistas, funciones, seed) para poder recrearlo o consultarlo sin conectarse a la base. Es un snapshot manual, no se corre automático ni queda sincronizado solo: si se cambia algo en Neon, hay que actualizar ese archivo a mano. `db/migracion_usuarios.sql` es una migración puntual (no idempotente, de un solo uso) para pasar una base pre-multiusuario al esquema actual — no correrla de nuevo sobre una base ya migrada.
 
+**Vercel (producción)**: las env vars no se heredan de `.env.local`, hay que cargarlas a mano en el dashboard (mínimo `DATABASE_URL` y `AUTH_SECRET`, más los de Google si se usa ese login). Sin `AUTH_SECRET` ahí, login/registro muestran la pantalla genérica de Auth.js "Server error / There is a problem with the server configuration" — fácil de confundir con un bug de código. Cambiar una env var en Vercel requiere redeploy, no se aplica sola.
+
 **Conexión a la base — ojo con esto**: el connection string real va únicamente en `.env.local` (gitignoreado, nunca se sube). `.env.local.example` es sólo la plantilla con placeholder y SÍ está versionado en git — nunca pegar ahí un string real (ya pasó una vez: quedó una contraseña real en un archivo trackeado, sin commitear de milagro; hubo que rotarla). Además, cambios en `.env.local` no hacen hot-reload — Next sólo lee las env vars al arrancar, así que después de tocar `DATABASE_URL` hay que matar y volver a levantar `npm run dev`.
 
-`.claude/settings.json` (del proyecto, versionado) ya trae permisos y un hook configurados: allowlist para comandos habituales no destructivos (`npm run/install`, `git status/diff/log/add/commit`, `ls/find/grep/cat/mkdir/mv/cp`, etc.), lista `ask` explícita que sigue pidiendo confirmación para lo irreversible (`rm -rf`, `push --force`, `reset --hard`, `git clean`, `checkout --`/`restore`, `--no-verify`, `--no-gpg-sign`, `branch -D`, cualquier `psql` directo), y un hook `PostToolUse` que después de editar algo en `app/`, `components/` o `lib/` chequea con `pgrep` si ya hay un proceso `next dev` corriendo y si no lo arranca en background (sin bloquear, sin gastar tokens). Usa `pgrep` en vez de pegarle a `localhost:3000` con curl a propósito: un check HTTP justo después de un edit puede coincidir con la recompilación de Next y dar un falso "está caído", duplicando el proceso y corrompiendo `.next/` (ya pasó). Si alguna vez la app se ve sin estilos/con contenido duplicado, es señal de eso: matar todos los `next dev` (`pgrep -f "node_modules/.bin/next dev"`), borrar `.next/` y levantar uno solo.
+`.claude/settings.json` (del proyecto, versionado) trae permisos y un hook — ver el archivo para el detalle exacto de los comandos. La lista `ask` sigue pidiendo confirmación para lo irreversible (`rm -rf`, `push --force`, `reset --hard`, `git clean`, `checkout --`/`restore`, `--no-verify`, `branch -D`, `psql` directo). El hook `PostToolUse` levanta `next dev` en background después de editar algo en `app/`, `components/` o `lib/`, si todavía no está corriendo. Chequea con `pgrep`, nunca con un curl a `localhost:3000` a propósito: un check HTTP justo después de un edit puede coincidir con la recompilación de Next y dar un falso "está caído", duplicando el proceso y corrompiendo `.next/` (ya pasó). Si la app se ve sin estilos o con contenido duplicado, es señal de eso: matar todos los `next dev` (`pgrep -f "node_modules/.bin/next dev"`), borrar `.next/` y levantar uno solo.
 
 ## Arquitectura
 
@@ -42,14 +44,21 @@ No hay suite de tests configurada. Requiere `.env.local` con `DATABASE_URL` apun
 
 La app está pensada principalmente para usarse en celular, pero corre también en desktop (`lg:` sidebar + panel único, ver bullet de `MobileShell` arriba). Todo cambio de UI de acá en adelante tiene que contemplar ambos layouts: si se toca un componente compartido entre `MobileShell` y el layout desktop, o se agrega algo nuevo, probar (o al menos revisar el JSX) en viewport mobile y en `lg:` antes de dar el cambio por terminado — no alcanza con verificar el que se ve por default.
 
+## PWA (instalación en el celular)
+
+- `app/manifest.ts` genera `/manifest.webmanifest`; `public/sw.js` es un service worker mínimo sin cache propio, que sólo existe porque Chrome/Android exige uno con fetch handler para considerar la app instalable de verdad (si no, "Instalar" crea sólo un acceso directo que abre el navegador en vez de la app standalone). Intercepta únicamente GET — nunca POST, porque re-emitir el POST del login desde el service worker rompía el body del request en Android — y no cachea nada, así cada apertura trae la última versión deployada sin que haga falta reinstalar. Se registra desde `components/RegistrarServiceWorker.tsx` en `app/layout.tsx`.
+- `middleware.ts` excluye del auth-redirect a `manifest.webmanifest`, `sw.js` e `icon-192.png`/`icon-512.png` — Chrome los pide sin sesión para evaluar instalabilidad; si el middleware los redirige a `/login`, la instalación se degrada en silencio a un simple acceso directo.
+- iOS no necesita código aparte: `appleWebApp.capable` + `apple-touch-icon`, ya en `app/layout.tsx`, alcanzan. Se instala manualmente desde Safari (no anda igual desde Chrome iOS) con Compartir → Agregar a inicio.
+
 ## Estructura del Proyecto
 - `app/api/`: Endpoints REST (`/categorias` [+ `/[id]` DELETE], `/movimientos`, `/personas`, `/deudas` [+ `/saldar`, `/[id]/pagos`], `/pagos/[id]`, `/gastos-fijos` [+ `/[id]`]). Todas requieren sesión (`getUsuarioId`).
 - `app/login/`, `app/registro/`: páginas públicas de autenticación, fuera del árbol de `Home`.
+- `app/manifest.ts`, `public/sw.js`: manifest y service worker de la PWA (ver sección arriba).
 - `components/`:
   - `Home`: componente cliente raíz, dueño de todo el estado (ver Arquitectura).
   - Vistas principales: `ResumenView`, `MovimientosView`, `PersonasView`, `GastosFijosView`.
   - Modales: `MovimientoModal`, `CategoriaModal`, `DeudaModal`, `GastoFijoModal`, `PersonaDetalleModal`, `ThemeModal`.
-  - UI / Shell: `MobileShell`, `Header`, `Sidebar`, `BottomNav`, `MovimientoItem`, `MonthSwitcher`.
+  - UI / Shell: `MobileShell`, `Header`, `Sidebar`, `BottomNav`, `MovimientoItem`, `MonthSwitcher`, `RegistrarServiceWorker`.
 - `lib/`: `db.ts` (cliente Neon), `auth.ts` (`getUsuarioId`/`noAutenticado`, usado por las rutas de `app/api/`), `mockData.ts`, `theme.ts`, `icons.ts`, `periodo.ts` (helpers de mes: `periodoActual`, `sumarMeses`, `formatPeriodoLabel`).
 - `auth.ts`, `auth.config.ts`, `middleware.ts`: configuración de NextAuth (raíz del repo, no en `lib/`).
 
