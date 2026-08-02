@@ -13,5 +13,9 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  //sólo intercepto GET: reenviar un POST (ej. el login) a través del service
+  //worker con fetch(event.request) puede romper el body del request en
+  //android, así que para todo lo que no sea GET dejo pasar sin tocar nada
+  if (event.request.method !== "GET") return;
   event.respondWith(fetch(event.request));
 });
