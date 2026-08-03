@@ -1,17 +1,12 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 
 const PULL_THRESHOLD = 68;
 const MAX_PULL = 92;
 const INDICATOR_SIZE = 34;
 const SWIPE_EASE = "cubic-bezier(0.22, 0.61, 0.36, 1)";
-
-// useLayoutEffect tira warning en SSR porque no hay DOM — en el server cae a
-// useEffect (no hace nada útil ahí, pero tampoco hace falta: recién importa
-// medir alturas reales una vez que estamos en el browser)
-const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 export function MobileShell({
   header,
@@ -30,11 +25,11 @@ export function MobileShell({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackWrapRef = useRef<HTMLDivElement>(null);
+  // cada panel tiene su propio scroll interno (overflow-y-auto) y queda
+  // montado siempre (sólo se traslada con el swipe): por eso el scrollTop de
+  // cada pestaña se mantiene solo, sin tener que guardarlo a mano
   const panelRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const hasMeasuredRef = useRef(false);
   const [width, setWidth] = useState(0);
-  const [heights, setHeights] = useState<number[]>([]);
-  const [heightsReady, setHeightsReady] = useState(false); // habilita la animación de alto recién después de la 1ra medición real
   const [dragPx, setDragPx] = useState(0);       // arrastre horizontal (cambio de pestaña)
   const [pullPx, setPullPx] = useState(0);        // arrastre vertical (pull-to-refresh)
   const [dragging, setDragging] = useState(false); // arrastre horizontal activo: sigue al dedo 1:1, sin animación
@@ -52,40 +47,17 @@ export function MobileShell({
     return () => window.removeEventListener("resize", measure);
   }, []);
 
-  // mide la altura real de cada pestaña para poder animar el alto del contenedor
-  // al cambiar de tab, en vez de quedarnos siempre con el alto de la más alta
-  // (que es lo que pasaba antes, al estar todas en una misma fila flex).
-  // useLayoutEffect para que la 1ra medición se pinte antes del primer frame
-  // visible y no se note ningún salto; igual guardo un flag aparte porque el
-  // html que manda el server ya viene con height:auto (el mes más alto) y ESE
-  // sí llega a pintarse una vez antes de que React hidrate — si la transición
-  // ya estuviera activa en esa corrección, se vería como una animación rara
-  // apenas entra a la página. Por eso recién habilito la transición un frame
-  // después de la primera medición real.
-  useIsomorphicLayoutEffect(() => {
-    function measureHeights() {
-      setHeights(panelRefs.current.map((el) => el?.offsetHeight ?? 0));
-      if (!hasMeasuredRef.current) {
-        hasMeasuredRef.current = true;
-        requestAnimationFrame(() => setHeightsReady(true));
-      }
-    }
-    measureHeights();
-    const observer = new ResizeObserver(measureHeights);
-    panelRefs.current.forEach((el) => el && observer.observe(el));
-    return () => observer.disconnect();
-  }, [panels]);
-
   function onTouchStart(e: React.TouchEvent) {
     if (disabled) return;
     const target = e.target as HTMLElement;
     const ignore = !!target.closest("[data-swipe-ignore]");
+    const panelEl = panelRefs.current[index];
     touch.current = {
       startX: e.touches[0].clientX,
       startY: e.touches[0].clientY,
       dir: "none",
       ignore,
-      atTop: window.scrollY <= 0,
+      atTop: (panelEl?.scrollTop ?? 0) <= 0,
     };
   }
 
@@ -120,11 +92,11 @@ export function MobileShell({
         if ((index === 0 && d > 0) || (index === panels.length - 1 && d < 0)) d = 0;
         setDragPx(d);
       } else if (st.dir === "v" && st.atTop && dy > 0) {
-        // Solo tira para refrescar si arrancó arriba del todo y el dedo va para abajo
+        // Solo tira para refrescar si arrancó arriba del todo (del panel activo) y el dedo va para abajo
         e.preventDefault();
         setPullPx(Math.min(dy * 0.45, MAX_PULL));
       }
-      // cualquier otro caso (scroll vertical normal): no hacemos nada, el navegador scrollea solo
+      // cualquier otro caso (scroll vertical normal): no hacemos nada, el navegador scrollea el panel solo
     }
 
     el.addEventListener("touchmove", handleTouchMove, { passive: false });
@@ -179,33 +151,18 @@ export function MobileShell({
   // via calc(), para que siga el dedo 1:1 durante el gesto.
   const basePercent = -index * (100 / panels.length);
   const transformValue = `translateX(calc(${basePercent}% + ${dragPx}px))`;
-
-  // altura: mientras se arrastra, interpola en vivo entre la pestaña actual y
-  // hacia la que se está deslizando, siguiendo el mismo progreso que el
-  // desplazamiento horizontal — evita que se vea "desincronizada" del gesto
-  let candidateIndex = index;
-  if (dragPx < 0) candidateIndex = Math.min(index + 1, panels.length - 1);
-  else if (dragPx > 0) candidateIndex = Math.max(index - 1, 0);
-  const dragProgress = width > 0 ? Math.min(Math.abs(dragPx) / width, 1) : 0;
-  const baseHeight = heights[index] ?? 0;
-  const candidateHeight = heights[candidateIndex] ?? baseHeight;
-  const heightPx = dragging ? baseHeight + (candidateHeight - baseHeight) * dragProgress : baseHeight;
-  const heightValue = heights.length ? `${heightPx}px` : "auto";
-
-  const swipeTransition = dragging
-    ? "none"
-    : `transform 0.3s ${SWIPE_EASE}${heightsReady ? `, height 0.3s ${SWIPE_EASE}` : ""}`;
+  const swipeTransition = dragging ? "none" : `transform 0.3s ${SWIPE_EASE}`;
 
   return (
     <div
       ref={containerRef}
-      className="relative min-h-screen pb-24"
+      className="relative h-[100dvh] overflow-hidden flex flex-col"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
       {/* Indicador de pull-to-refresh, se revela por detrás a medida que el contenido baja */}
       <div
-        className="absolute left-0 right-0 flex justify-center"
+        className="absolute left-0 right-0 flex justify-center z-10"
         style={{
           top: 0,
           height: INDICATOR_SIZE,
@@ -226,19 +183,16 @@ export function MobileShell({
       </div>
 
       <div
+        className="flex flex-col flex-1 min-h-0"
         style={{
           transform: `translateY(${pullPx}px)`,
           transition: settling ? "transform 0.25s ease" : "none",
         }}
       >
-        {header}
-        <div
-          ref={trackWrapRef}
-          className="overflow-hidden"
-          style={{ height: heightValue, transition: swipeTransition }}
-        >
+        <div className="shrink-0">{header}</div>
+        <div ref={trackWrapRef} className="flex-1 min-h-0 overflow-hidden">
           <div
-            className="flex items-start"
+            className="flex items-stretch h-full"
             style={{
               width: `${panels.length * 100}%`,
               transform: transformValue,
@@ -250,9 +204,9 @@ export function MobileShell({
                 key={i}
                 ref={(el) => { panelRefs.current[i] = el; }}
                 style={{ width: `${100 / panels.length}%` }}
-                className="shrink-0"
+                className="shrink-0 h-full overflow-y-auto overscroll-contain"
               >
-                {panel}
+                <div className="pb-24">{panel}</div>
               </div>
             ))}
           </div>

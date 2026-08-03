@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import {
-  PieChart, Pie, Cell, BarChart, Bar, AreaChart, Area,
+  PieChart, Pie, Cell, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal, X, PieChart as PieChartIcon, ListOrdered, CalendarDays } from "lucide-react";
 import { fmt, type Movimiento, type CategoriaConId } from "@/lib/mockData";
 import { MonthSwitcher } from "@/components/MonthSwitcher";
 import { Card, CardContent } from "@/components/ui/card";
@@ -101,14 +101,6 @@ export function GraficosView({
     }
     return [...map.values()].sort((a, b) => a.fechaISO.localeCompare(b.fechaISO));
   }, [gastosFiltrados]);
-
-  const acumulado = useMemo(() => {
-    let corrido = 0;
-    return porDia.map((d) => {
-      corrido += d.total;
-      return { label: d.label, acumulado: corrido };
-    });
-  }, [porDia]);
 
   const hayDatos = gastosFiltrados.length > 0;
 
@@ -219,11 +211,23 @@ export function GraficosView({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card className="border-none shadow-sm bg-secondary">
               <CardContent className="p-4 lg:p-5">
-                <p className="text-[12.5px] font-semibold text-foreground mb-3">Por categoría</p>
-                <div className="h-[200px] lg:h-[240px]">
+                <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground mb-4">
+                  <PieChartIcon size={14} className="text-muted-foreground" /> Por categoría
+                </p>
+                <div className="h-[190px] lg:h-[230px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={porCategoria} dataKey="total" nameKey="nombre" innerRadius="55%" outerRadius="85%" paddingAngle={2} strokeWidth={0}>
+                      <Pie
+                        data={porCategoria}
+                        dataKey="total"
+                        nameKey="nombre"
+                        innerRadius="58%"
+                        outerRadius="88%"
+                        paddingAngle={3}
+                        cornerRadius={4}
+                        stroke="hsl(var(--secondary))"
+                        strokeWidth={3}
+                      >
                         {porCategoria.map((c) => (
                           <Cell key={c.id} fill={c.color} />
                         ))}
@@ -232,14 +236,14 @@ export function GraficosView({
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="mt-3 space-y-1.5">
+                <div className="mt-4 space-y-2">
                   {porCategoria.slice(0, 6).map((c) => (
                     <div key={c.id} className="flex items-center justify-between text-[11.5px]">
-                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <span className="flex items-center gap-1.5 text-muted-foreground min-w-0 truncate">
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
-                        {c.nombre}
+                        <span className="truncate">{c.nombre}</span>
                       </span>
-                      <span className="tabular-nums text-foreground font-medium">
+                      <span className="tabular-nums text-foreground font-medium shrink-0 pl-2">
                         {fmt(c.total)} · {Math.round((c.total / totalGastado) * 100)}%
                       </span>
                     </div>
@@ -250,21 +254,23 @@ export function GraficosView({
 
             <Card className="border-none shadow-sm bg-secondary">
               <CardContent className="p-4 lg:p-5">
-                <p className="text-[12.5px] font-semibold text-foreground mb-3">Ranking de categorías</p>
-                <div className="h-[200px] lg:h-[240px]">
+                <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground mb-4">
+                  <ListOrdered size={14} className="text-muted-foreground" /> Ranking de categorías
+                </p>
+                <div className="h-[190px] lg:h-[230px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={porCategoria} layout="vertical" margin={{ top: 0, right: 12, bottom: 0, left: 0 }}>
+                    <BarChart data={porCategoria} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 0 }} barCategoryGap="30%">
                       <XAxis type="number" hide />
                       <YAxis
                         type="category"
                         dataKey="nombre"
-                        width={90}
+                        width={88}
                         tickLine={false}
                         axisLine={false}
                         tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                       />
                       <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted))" }} />
-                      <Bar dataKey="total" radius={[0, 6, 6, 0]} barSize={16}>
+                      <Bar dataKey="total" radius={[0, 6, 6, 0]} maxBarSize={14}>
                         {porCategoria.map((c) => (
                           <Cell key={c.id} fill={c.color} />
                         ))}
@@ -275,41 +281,20 @@ export function GraficosView({
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm bg-secondary">
+            <Card className="border-none shadow-sm bg-secondary lg:col-span-2">
               <CardContent className="p-4 lg:p-5">
-                <p className="text-[12.5px] font-semibold text-foreground mb-3">Por día</p>
-                <div className="h-[200px] lg:h-[240px]">
+                <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground mb-4">
+                  <CalendarDays size={14} className="text-muted-foreground" /> Por día
+                </p>
+                <div className="h-[190px] lg:h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={porDia} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                      <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
+                    <BarChart data={porDia} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap="35%">
+                      <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="3 5" />
                       <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                       <YAxis hide />
                       <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted))" }} />
-                      <Bar dataKey="total" radius={[4, 4, 0, 0]} fill="hsl(var(--expense))" />
+                      <Bar dataKey="total" radius={[4, 4, 0, 0]} fill="hsl(var(--expense))" maxBarSize={28} />
                     </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-none shadow-sm bg-secondary">
-              <CardContent className="p-4 lg:p-5">
-                <p className="text-[12.5px] font-semibold text-foreground mb-3">Acumulado del mes</p>
-                <div className="h-[200px] lg:h-[240px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={acumulado} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                      <defs>
-                        <linearGradient id="gradAcumulado" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--expense))" stopOpacity={0.35} />
-                          <stop offset="95%" stopColor="hsl(var(--expense))" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
-                      <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                      <YAxis hide />
-                      <Tooltip content={<ChartTooltip />} />
-                      <Area type="monotone" dataKey="acumulado" stroke="hsl(var(--expense))" fill="url(#gradAcumulado)" strokeWidth={2} />
-                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>

@@ -13,7 +13,9 @@ export async function GET() {
 
     const rows = await sql`
       SELECT gf.id, gf.categoria_id, gf.descripcion, gf.monto, gf.dia_mes,
-             c.nombre AS categoria, c.color_hex, c.icono
+             gf.mes_inicio, gf.cuotas_totales, gf.mes_fin,
+             c.nombre AS categoria, c.color_hex, c.icono,
+             (SELECT COUNT(*) FROM movimientos m WHERE m.gasto_fijo_id = gf.id)::int AS cuotas_generadas
       FROM gastos_fijos gf
       JOIN categorias c ON c.id = gf.categoria_id
       WHERE gf.activo = true AND gf.usuario_id = ${usuarioId}
@@ -33,7 +35,7 @@ export async function POST(request: Request) {
     if (!usuarioId) return noAutenticado();
 
     const body = await request.json();
-    const { categoria_id, descripcion, monto, dia_mes } = body;
+    const { categoria_id, descripcion, monto, dia_mes, proximo_mes, cuotas_totales } = body;
 
     if (!categoria_id || !descripcion?.trim() || !monto) {
       return NextResponse.json(
@@ -43,7 +45,10 @@ export async function POST(request: Request) {
     }
 
     const rows = await sql`
-      SELECT crear_gasto_fijo(${usuarioId}, ${categoria_id}, ${descripcion.trim()}, ${monto}, ${dia_mes ?? 1}) AS id
+      SELECT crear_gasto_fijo(
+        ${usuarioId}, ${categoria_id}, ${descripcion.trim()}, ${monto}, ${dia_mes ?? 1},
+        ${proximo_mes ?? false}, ${cuotas_totales ?? null}
+      ) AS id
     `;
 
     return NextResponse.json({ id: rows[0].id }, { status: 201 });

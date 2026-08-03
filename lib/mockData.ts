@@ -80,9 +80,13 @@ export type GastoFijoRow = {
   descripcion: string;
   monto: string;
   dia_mes: number;
+  mes_inicio: string;
+  cuotas_totales: number | null;
+  mes_fin: string | null;
   categoria: string;
   color_hex: string | null;
   icono: string | null;
+  cuotas_generadas: number;
 };
 
 export type GastoFijo = {
@@ -92,6 +96,10 @@ export type GastoFijo = {
   cat: string;
   monto: number;
   diaMes: number;
+  mesInicio: string;
+  cuotasTotales: number | null;
+  mesFin: string | null;
+  cuotasGeneradas: number;
   color: string;
   icon: LucideIcon;
 };
@@ -104,6 +112,10 @@ export function mapGastoFijo(row: GastoFijoRow): GastoFijo {
     cat: row.categoria,
     monto: Number(row.monto),
     diaMes: row.dia_mes,
+    mesInicio: row.mes_inicio,
+    cuotasTotales: row.cuotas_totales,
+    mesFin: row.mes_fin,
+    cuotasGeneradas: row.cuotas_generadas,
     color: row.color_hex || "#8A6D3B",
     icon: (row.icono && ICONS[row.icono]) || Wallet,
   };

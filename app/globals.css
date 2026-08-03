@@ -10,6 +10,20 @@ html, body {
   overscroll-behavior-y: none;
 }
 
+/* evito la selección de texto (fondo azul al mantener presionado) en toda la
+   app, salvo en los campos donde el usuario realmente necesita seleccionar
+   o copiar texto */
+body {
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
