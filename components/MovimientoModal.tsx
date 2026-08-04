@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Check, Trash2, Plus } from "lucide-react";
+import { X, Check, Trash2 } from "lucide-react";
 import { type CategoriaConId, type CategoriaRow, type Movimiento, mapCategoria } from "@/lib/mockData";
 import { Button } from "@/components/ui/button";
 import { CategoriaModal } from "@/components/CategoriaModal";
+import { CategoriaSelector } from "@/components/CategoriaSelector";
 
 export function MovimientoModal({
   movimiento,
@@ -257,36 +258,12 @@ export function MovimientoModal({
               </button>
             </div>
 
-            <div>
-              <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Categoría</label>
-              <div className="flex gap-2 flex-wrap mt-2">
-                {categoriasFiltradas.map((c) => (
-                  <button
-                    type="button"
-                    key={c.id}
-                    onClick={() => setCategoriaId(c.id)}
-                    className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium border text-foreground"
-                    style={{
-                      borderColor: categoriaId === c.id ? c.color : "hsl(var(--border))",
-                      backgroundColor: categoriaId === c.id ? c.color + "22" : "transparent",
-                    }}
-                  >
-                    <c.icon size={13} style={{ color: c.color }} />
-                    {c.name}
-                  </button>
-                ))}
-                {categoriasFiltradas.length === 0 && (
-                  <p className="text-[12px] text-muted-foreground">Cargando categorías...</p>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setAgregandoCategoria(true)}
-                  className="flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-medium border border-dashed text-muted-foreground"
-                >
-                  <Plus size={13} /> Nueva
-                </button>
-              </div>
-            </div>
+            <CategoriaSelector
+              categorias={categoriasFiltradas}
+              categoriaId={categoriaId}
+              onSelect={setCategoriaId}
+              onAgregarNueva={() => setAgregandoCategoria(true)}
+            />
 
             <div>
               <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Descripción</label>

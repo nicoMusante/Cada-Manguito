@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { X, Check } from "lucide-react";
 import { type CategoriaConId, type CategoriaRow, mapCategoria } from "@/lib/mockData";
 import { Button } from "@/components/ui/button";
+import { CategoriaModal } from "@/components/CategoriaModal";
+import { CategoriaSelector } from "@/components/CategoriaSelector";
 
 export function GastoFijoModal({
   onClose,
@@ -22,16 +24,21 @@ export function GastoFijoModal({
   const [cuotas, setCuotas] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [agregandoCategoria, setAgregandoCategoria] = useState(false);
 
-  useEffect(() => {
+  const cargarCategorias = () => {
     fetch("/api/categorias")
       .then((r) => r.json())
       .then((rows: CategoriaRow[]) => {
         const mapped = rows.map(mapCategoria).filter((c) => c.tipo === "GASTO");
         setCategorias(mapped);
-        if (mapped.length > 0) setCategoriaId(mapped[0].id);
+        setCategoriaId((actual) => actual ?? (mapped.length > 0 ? mapped[0].id : null));
       })
       .catch((err) => console.error("Error al cargar categorías:", err));
+  };
+
+  useEffect(() => {
+    cargarCategorias();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -77,6 +84,7 @@ export function GastoFijoModal({
   }
 
   return (
+    <>
     <div
       className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/45"
       onClick={onClose}
@@ -93,29 +101,12 @@ export function GastoFijoModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Categoría</label>
-            <div className="flex gap-2 flex-wrap mt-2">
-              {categorias.map((c) => (
-                <button
-                  type="button"
-                  key={c.id}
-                  onClick={() => setCategoriaId(c.id)}
-                  className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium border text-foreground"
-                  style={{
-                    borderColor: categoriaId === c.id ? c.color : "hsl(var(--border))",
-                    backgroundColor: categoriaId === c.id ? c.color + "22" : "transparent",
-                  }}
-                >
-                  <c.icon size={13} style={{ color: c.color }} />
-                  {c.name}
-                </button>
-              ))}
-              {categorias.length === 0 && (
-                <p className="text-[12px] text-muted-foreground">Cargando categorías...</p>
-              )}
-            </div>
-          </div>
+          <CategoriaSelector
+            categorias={categorias}
+            categoriaId={categoriaId}
+            onSelect={setCategoriaId}
+            onAgregarNueva={() => setAgregandoCategoria(true)}
+          />
 
           <div>
             <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Descripción</label>
@@ -213,5 +204,12 @@ export function GastoFijoModal({
         </form>
       </div>
     </div>
+    {agregandoCategoria && (
+      <CategoriaModal
+        onClose={() => setAgregandoCategoria(false)}
+        onCreated={cargarCategorias}
+      />
+    )}
+    </>
   );
 }

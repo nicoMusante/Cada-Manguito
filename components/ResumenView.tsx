@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TrendingDown, TrendingUp, Clock, Plus, X, Check } from "lucide-react";
+import { TrendingDown, TrendingUp, Clock, Plus, X, Check, ChevronDown } from "lucide-react";
 import { computeTotals, fmt, type Movimiento, type CategoriaConId } from "@/lib/mockData";
 import { formatUSD, type Cotizacion } from "@/lib/dolar";
 import { MovimientoItem } from "@/components/MovimientoItem";
@@ -12,6 +12,9 @@ import { Card, CardContent } from "@/components/ui/card";
 // sola, para que un toque accidental en la x no deje el chip pidiendo
 // confirmación para siempre
 const MS_AUTOCANCELAR_BORRADO = 4000;
+
+// cantidad de categorías visibles antes de tener que desplegar el resto
+const CAP_CATEGORIAS = 7;
 
 export function ResumenView({
   movimientos, loading, categorias, meDeben, yoDebo, onSelectMovimiento, onAddCategoria, onEliminarCategoria,
@@ -33,6 +36,7 @@ export function ResumenView({
 }) {
   const [categoriasFiltro, setCategoriasFiltro] = useState<Set<number>>(new Set());
   const [confirmarEliminarId, setConfirmarEliminarId] = useState<number | null>(null);
+  const [categoriasExpandidas, setCategoriasExpandidas] = useState(false);
 
   // si no se confirma en unos segundos, se cancela sola — así un toque
   // accidental en la x no deja el chip trabado pidiendo confirmación
@@ -97,7 +101,7 @@ export function ResumenView({
         data-swipe-ignore
         className="mt-5 flex gap-2 overflow-x-auto overscroll-x-contain no-scrollbar px-5 lg:px-0 lg:flex-wrap lg:order-3 lg:col-span-6 lg:mt-4"
       >
-        {categorias.map((c) => {
+        {(categoriasExpandidas ? categorias : categorias.slice(0, CAP_CATEGORIAS)).map((c) => {
           const seleccionada = categoriasFiltro.has(c.id);
           const confirmando = confirmarEliminarId === c.id;
           return (
@@ -156,6 +160,15 @@ export function ResumenView({
             </div>
           );
         })}
+        {categorias.length > CAP_CATEGORIAS && (
+          <button
+            onClick={() => setCategoriasExpandidas((v) => !v)}
+            className="shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 border border-dashed border-muted-foreground/50 text-muted-foreground"
+          >
+            <ChevronDown size={13} className={categoriasExpandidas ? "rotate-180" : ""} />
+            <span className="text-[11.5px]">{categoriasExpandidas ? "Ver menos" : "Ver más"}</span>
+          </button>
+        )}
         <button
           onClick={onAddCategoria}
           className="shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 border border-dashed border-muted-foreground/50 text-muted-foreground"
