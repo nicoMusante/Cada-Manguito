@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   PieChart, Pie, Cell, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { SlidersHorizontal, X, PieChart as PieChartIcon, ListOrdered, CalendarDays } from "lucide-react";
+import { SlidersHorizontal, X, Check, PieChart as PieChartIcon, ListOrdered, CalendarDays } from "lucide-react";
 import { fmt, type Movimiento, type CategoriaConId } from "@/lib/mockData";
 import { MonthSwitcher } from "@/components/MonthSwitcher";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,6 +45,7 @@ export function GraficosView({
   const [montoMax, setMontoMax] = useState("");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
 
   function toggleCategoria(id: number) {
     setCategoriasFiltro((prev) => {
@@ -55,6 +57,8 @@ export function GraficosView({
   }
 
   const hayFiltro = categoriasFiltro.size > 0 || montoMin !== "" || montoMax !== "" || fechaDesde !== "" || fechaHasta !== "";
+  const cantidadFiltrosActivos =
+    categoriasFiltro.size + (montoMin !== "" ? 1 : 0) + (montoMax !== "" ? 1 : 0) + (fechaDesde !== "" ? 1 : 0) + (fechaHasta !== "" ? 1 : 0);
 
   function limpiarFiltros() {
     setCategoriasFiltro(new Set());
@@ -108,98 +112,121 @@ export function GraficosView({
     <div className="pb-4 lg:pb-0">
       <MonthSwitcher label={periodoLabel} onAnterior={onMesAnterior} onSiguiente={onMesSiguiente} esMesActual={esMesActual} />
 
+      {/* filtros: categoría, monto y fecha, agrupados en un panel */}
       <div className="px-5 lg:px-0 mt-5 lg:mt-6">
-        <Card className="border-none shadow-sm bg-secondary">
-          <CardContent className="p-4 lg:p-6">
-            <p className="text-[12px] lg:text-[13px] text-muted-foreground">Gastado {hayFiltro ? "(filtrado)" : "este mes"}</p>
-            <p className="text-[34px] lg:text-[40px] font-bold mt-1 text-expense tabular-nums">{fmt(totalGastado)}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* filtros: categoría, monto y fecha */}
-      <div className="px-5 lg:px-0 mt-5">
-        <div className="flex items-center justify-between mb-2">
-          <p className="flex items-center gap-1.5 text-[12.5px] lg:text-[14px] font-semibold text-foreground">
-            <SlidersHorizontal size={13} /> Filtros
-          </p>
-          {hayFiltro && (
-            <button type="button" onClick={limpiarFiltros} className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-              <X size={11} /> Limpiar
-            </button>
+        <button
+          type="button"
+          onClick={() => setFiltrosAbiertos(true)}
+          className="flex items-center gap-1.5 rounded-full pl-3.5 pr-3 py-2 text-[12.5px] lg:text-[13px] font-medium border text-foreground bg-secondary"
+          style={{ borderColor: hayFiltro ? "hsl(var(--primary))" : "transparent" }}
+        >
+          <SlidersHorizontal size={13} /> Filtrar
+          {cantidadFiltrosActivos > 0 && (
+            <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9.5px] font-semibold bg-primary text-primary-foreground">
+              {cantidadFiltrosActivos}
+            </span>
           )}
-        </div>
-
-        {categoriasGasto.length > 0 && (
-          <div data-swipe-ignore className="flex gap-2 overflow-x-auto overscroll-x-contain no-scrollbar lg:flex-wrap">
-            {categoriasGasto.map((c) => {
-              const seleccionada = categoriasFiltro.has(c.id);
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => toggleCategoria(c.id)}
-                  aria-pressed={seleccionada}
-                  className="shrink-0 flex items-center gap-1.5 rounded-full pl-3 pr-3.5 py-2 text-white transition"
-                  style={{
-                    backgroundColor: c.color,
-                    opacity: categoriasFiltro.size > 0 && !seleccionada ? 0.45 : 1,
-                    boxShadow: seleccionada ? "0 0 0 2px rgba(255,255,255,0.85) inset" : "none",
-                  }}
-                >
-                  <c.icon size={13} />
-                  <span className="text-[11.5px]">{c.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-2.5 mt-3">
-          <div>
-            <label className="text-[11px] text-muted-foreground">Monto mínimo</label>
-            <input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              value={montoMin}
-              onChange={(e) => setMontoMin(e.target.value)}
-              placeholder="$0"
-              className="w-full mt-1 rounded-xl px-3 py-2 text-[13px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
-            />
-          </div>
-          <div>
-            <label className="text-[11px] text-muted-foreground">Monto máximo</label>
-            <input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              value={montoMax}
-              onChange={(e) => setMontoMax(e.target.value)}
-              placeholder="Sin límite"
-              className="w-full mt-1 rounded-xl px-3 py-2 text-[13px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
-            />
-          </div>
-          <div>
-            <label className="text-[11px] text-muted-foreground">Desde</label>
-            <input
-              type="date"
-              value={fechaDesde}
-              onChange={(e) => setFechaDesde(e.target.value)}
-              className="w-full mt-1 rounded-xl px-3 py-2 text-[13px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
-            />
-          </div>
-          <div>
-            <label className="text-[11px] text-muted-foreground">Hasta</label>
-            <input
-              type="date"
-              value={fechaHasta}
-              onChange={(e) => setFechaHasta(e.target.value)}
-              className="w-full mt-1 rounded-xl px-3 py-2 text-[13px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
-            />
-          </div>
-        </div>
+        </button>
       </div>
+
+      {filtrosAbiertos && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/45"
+          onClick={() => setFiltrosAbiertos(false)}
+        >
+          <div
+            className="w-full lg:w-[380px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5 max-h-[85vh] overflow-y-auto bg-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[15px] font-semibold text-foreground">Filtrar</p>
+              <div className="flex items-center gap-2">
+                {hayFiltro && (
+                  <button type="button" onClick={limpiarFiltros} className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                    <X size={11} /> Limpiar
+                  </button>
+                )}
+                <button
+                  onClick={() => setFiltrosAbiertos(false)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center bg-secondary text-foreground"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {categoriasGasto.length > 0 && (
+              <div className="mb-4 rounded-2xl border border-border p-3">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">Categorías</p>
+                <div className="space-y-1 max-h-[220px] overflow-y-auto">
+                  {categoriasGasto.map((c) => {
+                    const seleccionada = categoriasFiltro.has(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => toggleCategoria(c.id)}
+                        aria-pressed={seleccionada}
+                        className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 bg-secondary"
+                      >
+                        <c.icon size={14} style={{ color: c.color }} />
+                        <span className="flex-1 text-left text-[13px] text-foreground">{c.name}</span>
+                        {seleccionada && <Check size={15} className="text-primary" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="text-[11px] text-muted-foreground">Monto mínimo</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  value={montoMin}
+                  onChange={(e) => setMontoMin(e.target.value)}
+                  placeholder="$0"
+                  className="w-full mt-1 rounded-xl px-3 py-2 text-[13px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-muted-foreground">Monto máximo</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  value={montoMax}
+                  onChange={(e) => setMontoMax(e.target.value)}
+                  placeholder="Sin límite"
+                  className="w-full mt-1 rounded-xl px-3 py-2 text-[13px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-muted-foreground">Desde</label>
+                <input
+                  type="date"
+                  value={fechaDesde}
+                  onChange={(e) => setFechaDesde(e.target.value)}
+                  className="w-full mt-1 rounded-xl px-3 py-2 text-[13px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-muted-foreground">Hasta</label>
+                <input
+                  type="date"
+                  value={fechaHasta}
+                  onChange={(e) => setFechaHasta(e.target.value)}
+                  className="w-full mt-1 rounded-xl px-3 py-2 text-[13px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
+                />
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* charts */}
       <div className="px-5 lg:px-0 mt-6">
@@ -214,7 +241,7 @@ export function GraficosView({
                 <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground mb-4">
                   <PieChartIcon size={14} className="text-muted-foreground" /> Por categoría
                 </p>
-                <div className="h-[190px] lg:h-[230px]">
+                <div className="relative h-[190px] lg:h-[230px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -232,9 +259,12 @@ export function GraficosView({
                           <Cell key={c.id} fill={c.color} />
                         ))}
                       </Pie>
-                      <Tooltip content={<ChartTooltip />} />
                     </PieChart>
                   </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-4">
+                    <p className="text-[9.5px] text-muted-foreground text-center">Gastado {hayFiltro ? "(filtrado)" : "este mes"}</p>
+                    <p className="text-[17px] lg:text-[20px] font-bold text-expense tabular-nums text-center">{fmt(totalGastado)}</p>
+                  </div>
                 </div>
                 <div className="mt-4 space-y-2">
                   {porCategoria.slice(0, 6).map((c) => (

@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { ThemeName } from "@/lib/theme";
+import { Plus } from "lucide-react";
+import { THEME_PAIR, type ThemeName } from "@/lib/theme";
+import type { DolarTipo, Cotizacion } from "@/lib/dolar";
 import {
   mapMovimiento, mapCategoria, mapGastoFijo,
   type Movimiento, type MovimientoRow,
@@ -21,7 +23,7 @@ import { CategoriaModal } from "@/components/CategoriaModal";
 import { DeudaModal } from "@/components/DeudaModal";
 import { GastoFijoModal } from "@/components/GastoFijoModal";
 import { PersonaDetalleModal } from "@/components/PersonaDetalleModal";
-import { ThemeModal } from "@/components/ThemeModal";
+import { AjustesModal } from "@/components/AjustesModal";
 import { MobileShell } from "@/components/MobileShell";
 import { periodoActual, sumarMeses, formatPeriodoLabel } from "@/lib/periodo";
 
@@ -32,12 +34,16 @@ const TAB_IDS = TABS.map((t) => t.id) as TabId[];
 export function Home({
   usuario,
   temaInicial,
+  tipoDolarInicial,
 }: {
   usuario: { nombre: string; email: string };
   temaInicial: ThemeName;
+  tipoDolarInicial: DolarTipo;
 }) {
   const [tab, setTab] = useState<TabId>("resumen");
   const [themeName, setThemeName] = useState<ThemeName>(temaInicial);
+  const [tipoDolar, setTipoDolar] = useState<DolarTipo>(tipoDolarInicial);
+  const [cotizacion, setCotizacion] = useState<Cotizacion | null>(null);
   const [periodo, setPeriodo] = useState(periodoActual());
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [categorias, setCategorias] = useState<CategoriaConId[]>([]);
@@ -51,7 +57,7 @@ export function Home({
   const [categoriaModalAbierta, setCategoriaModalAbierta] = useState(false);
   const [deudaModalAbierta, setDeudaModalAbierta] = useState(false);
   const [gastoFijoModalAbierto, setGastoFijoModalAbierto] = useState(false);
-  const [temaModalAbierto, setTemaModalAbierto] = useState(false);
+  const [ajustesModalAbierto, setAjustesModalAbierto] = useState(false);
   const [personaDetalleId, setPersonaDetalleId] = useState<number | null>(null);
 
   // el tema se aplica como data-theme en <html> — las variables CSS de cada
@@ -133,6 +139,33 @@ export function Home({
     }).catch((err) => console.error("Error al guardar el tema:", err));
   };
 
+  // barra de sol/luna: cambia al par claro/oscuro del tema actual sin tocar
+  // la gama de colores (ej. Café ↔ Terracota)
+  const handleToggleModo = () => handleSelectTema(THEME_PAIR[themeName]);
+
+  const handleSelectDolar = (tipo: DolarTipo) => {
+    setTipoDolar(tipo);
+    fetch("/api/usuario", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tipo_dolar: tipo }),
+    }).catch((err) => console.error("Error al guardar el tipo de dólar:", err));
+  };
+
+  // cotización del dólar: se trae al entrar y se refresca cada 5 minutos
+  // mientras la app está abierta (dolarapi.com actualiza varias veces al día)
+  useEffect(() => {
+    const cargarCotizacion = () => {
+      fetch(`/api/dolar?tipo=${tipoDolar}`, { cache: "no-store" })
+        .then((r) => r.json())
+        .then((data) => setCotizacion(data.venta ? data : null))
+        .catch((err) => console.error("Error al cargar la cotización del dólar:", err));
+    };
+    cargarCotizacion();
+    const interval = setInterval(cargarCotizacion, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [tipoDolar]);
+
   const irMesAnterior = () => setPeriodo((p) => sumarMeses(p, -1));
   const irMesSiguiente = () => setPeriodo((p) => sumarMeses(p, 1));
   const esMesActual = periodo === periodoActual();
@@ -186,6 +219,7 @@ export function Home({
       onMesAnterior={irMesAnterior}
       onMesSiguiente={irMesSiguiente}
       esMesActual={esMesActual}
+      cotizacion={cotizacion}
     />
   );
   const movimientosPanel = (
@@ -197,6 +231,7 @@ export function Home({
       onMesAnterior={irMesAnterior}
       onMesSiguiente={irMesSiguiente}
       esMesActual={esMesActual}
+      cotizacion={cotizacion}
     />
   );
   const graficosPanel = (
@@ -217,6 +252,7 @@ export function Home({
       loading={loadingPersonas}
       onSelectPersona={setPersonaDetalleId}
       onChanged={cargarPersonas}
+      cotizacion={cotizacion}
     />
   );
   const fijosPanel = (
@@ -225,6 +261,7 @@ export function Home({
       loading={loadingGastosFijos}
       onEliminar={handleEliminarGastoFijo}
       onNuevo={() => setGastoFijoModalAbierto(true)}
+      cotizacion={cotizacion}
     />
   );
 
@@ -252,7 +289,7 @@ export function Home({
 
   const modalAbierto =
     modal.mode !== "closed" || categoriaModalAbierta || deudaModalAbierta ||
-    gastoFijoModalAbierto || temaModalAbierto || personaDetalleId !== null;
+    gastoFijoModalAbierto || ajustesModalAbierto || personaDetalleId !== null;
 
   return (
     <main className="min-h-screen bg-background">
@@ -261,7 +298,7 @@ export function Home({
           {/* Desktop: sidebar + panel único */}
           <Sidebar active={tab} onChange={setTab} />
           <div className="hidden lg:block flex-1">
-            <Header title={titles[tab]} themeName={themeName} usuario={usuario} onOpenTema={() => setTemaModalAbierto(true)} onOpenNuevo={abrirNuevo} />
+            <Header title={titles[tab]} themeName={themeName} usuario={usuario} onToggleModo={handleToggleModo} onOpenAjustes={() => setAjustesModalAbierto(true)} />
             {panelesPorTab[tab]}
           </div>
 
@@ -269,7 +306,7 @@ export function Home({
           <div className="lg:hidden">
             <MobileShell
               header={
-                <Header title={titles[tab]} themeName={themeName} usuario={usuario} onOpenTema={() => setTemaModalAbierto(true)} onOpenNuevo={abrirNuevo} />
+                <Header title={titles[tab]} themeName={themeName} usuario={usuario} onToggleModo={handleToggleModo} onOpenAjustes={() => setAjustesModalAbierto(true)} />
               }
               index={TAB_IDS.indexOf(tab)}
               onIndexChange={(i) => setTab(TAB_IDS[i])}
@@ -283,11 +320,21 @@ export function Home({
 
       <BottomNav active={tab} onChange={setTab} />
 
+      <button
+        type="button"
+        onClick={abrirNuevo}
+        aria-label="Nuevo"
+        className="fixed z-40 bottom-24 right-5 lg:bottom-10 lg:right-10 w-11 h-11 rounded-full flex items-center justify-center shadow-lg bg-primary text-primary-foreground active:scale-95 transition-transform"
+      >
+        <Plus size={19} />
+      </button>
+
       {modal.mode !== "closed" && (
         <MovimientoModal
           movimiento={modal.mode === "edit" ? modal.movimiento : null}
           onClose={() => setModal({ mode: "closed" })}
           onSaved={alGuardarMovimiento}
+          onCategoriaCreada={cargarCategorias}
         />
       )}
 
@@ -303,8 +350,14 @@ export function Home({
         <GastoFijoModal onClose={() => setGastoFijoModalAbierto(false)} onSaved={alGuardarGastoFijo} />
       )}
 
-      {temaModalAbierto && (
-        <ThemeModal current={themeName} onSelect={handleSelectTema} onClose={() => setTemaModalAbierto(false)} />
+      {ajustesModalAbierto && (
+        <AjustesModal
+          temaActual={themeName}
+          dolarActual={tipoDolar}
+          onSelectTema={handleSelectTema}
+          onSelectDolar={handleSelectDolar}
+          onClose={() => setAjustesModalAbierto(false)}
+        />
       )}
 
       {personaDetalleId !== null && (

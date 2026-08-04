@@ -1,4 +1,4 @@
-import { Dumbbell, Home as HomeIcon, Zap, Coffee, ShoppingBag, Wallet, LucideIcon } from "lucide-react";
+import { Home as HomeIcon, Zap, Coffee, ShoppingBag, Wallet, LucideIcon } from "lucide-react";
 import { ICONS } from "./icons";
 
 export type Categoria = { name: string; icon: LucideIcon; color: string };
@@ -26,7 +26,6 @@ export function mapCategoria(row: CategoriaRow): CategoriaConId {
 
 // Categorías: todavía sin endpoint propio, quedan fijas por ahora.
 export const categories: Categoria[] = [
-  { name: "Padel", icon: Dumbbell, color: "#2F6F5E" },
   { name: "Casa", icon: HomeIcon, color: "#B8562F" },
   { name: "Servicios", icon: Zap, color: "#8A6D3B" },
   { name: "Comida", icon: Coffee, color: "#4A5D6B" },

@@ -104,6 +104,7 @@ export function PersonaDetalleModal({
   }
 
   async function handleDeleteEntry(id: number) {
+    if (!confirm("¿Eliminar esta deuda? No se puede deshacer.")) return;
     try {
       const res = await fetch(`/api/deudas/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("No se pudo eliminar.");
@@ -153,6 +154,7 @@ export function PersonaDetalleModal({
   }
 
   async function handleEliminarPago(pagoId: number) {
+    if (!confirm("¿Eliminar este pago? La deuda vuelve a quedar pendiente por ese monto.")) return;
     try {
       const res = await fetch(`/api/pagos/${pagoId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("No se pudo eliminar el pago.");

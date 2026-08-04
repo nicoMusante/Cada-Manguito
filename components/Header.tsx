@@ -1,16 +1,38 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { Plus, ChevronLeft, Palette, LogOut } from "lucide-react";
-import { THEME_LABELS, type ThemeName } from "@/lib/theme";
+import { ChevronLeft, Sun, Moon, Settings, LogOut } from "lucide-react";
+import { THEME_MODE, type ThemeName } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 
+// barra de sol/luna: cambia entre claro y oscuro sin tocar la gama de
+// colores elegida en Ajustes (ej. Café ↔ Terracota)
+function ModoToggle({ themeName, onToggle }: { themeName: ThemeName; onToggle: () => void }) {
+  const esClaro = THEME_MODE[themeName] === "claro";
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={esClaro ? "Cambiar a modo oscuro" : "Cambiar a modo claro"}
+      className="relative w-14 h-8 rounded-full bg-secondary shrink-0"
+    >
+      <span
+        className={`absolute top-1 w-6 h-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground transition-all duration-200 ${
+          esClaro ? "left-1" : "left-7"
+        }`}
+      >
+        {esClaro ? <Sun size={13} /> : <Moon size={13} />}
+      </span>
+    </button>
+  );
+}
+
 export function Header({
-  title, themeName, usuario, onOpenTema, onOpenNuevo,
+  title, themeName, usuario, onToggleModo, onOpenAjustes,
 }: {
   title?: string; themeName: ThemeName;
   usuario: { nombre: string; email: string };
-  onOpenTema: () => void; onOpenNuevo: () => void;
+  onToggleModo: () => void; onOpenAjustes: () => void;
 }) {
   return (
     <div className="px-5 lg:px-0 pt-8 lg:pt-0 flex items-center justify-between">
@@ -31,17 +53,9 @@ export function Header({
         </div>
       )}
       <div className="flex items-center gap-2">
-        <Button
-          onClick={onOpenTema}
-          variant="secondary"
-          size="icon"
-          className="lg:w-auto lg:h-auto lg:px-4 lg:py-2 rounded-full shadow-none"
-        >
-          <Palette size={16} />
-          <span className="hidden lg:inline text-[13px] font-medium">{THEME_LABELS[themeName]}</span>
-        </Button>
-        <Button onClick={onOpenNuevo} variant="secondary" size="icon" className="rounded-full shadow-none" aria-label="Nuevo">
-          <Plus size={17} />
+        <ModoToggle themeName={themeName} onToggle={onToggleModo} />
+        <Button onClick={onOpenAjustes} variant="secondary" size="icon" className="rounded-full shadow-none" aria-label="Ajustes">
+          <Settings size={16} />
         </Button>
         <Button
           onClick={() => {

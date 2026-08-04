@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { MoreVertical } from "lucide-react";
 import { type Movimiento, fmt } from "@/lib/mockData";
+import { formatUSD, type Cotizacion } from "@/lib/dolar";
 
 const LONG_PRESS_MS = 220;
 
@@ -10,10 +11,12 @@ export function MovimientoItem({
   m,
   subtitle,
   onEdit,
+  cotizacion,
 }: {
   m: Movimiento;
   subtitle: string;
   onEdit: () => void;
+  cotizacion?: Cotizacion | null;
 }) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
@@ -63,9 +66,14 @@ export function MovimientoItem({
         <p className="text-[10.5px] text-muted-foreground">{subtitle}</p>
       </div>
 
-      <p className={`text-[13px] font-semibold ${m.tipo === "in" ? "text-income" : "text-foreground"}`}>
-        {m.tipo === "in" ? "+" : "-"}{fmt(Math.abs(m.monto))}
-      </p>
+      <div className="text-right shrink-0">
+        <p className={`text-[13px] font-semibold ${m.tipo === "in" ? "text-income" : "text-foreground"}`}>
+          {m.tipo === "in" ? "+" : "-"}{fmt(Math.abs(m.monto))}
+        </p>
+        {formatUSD(Math.abs(m.monto), cotizacion ?? null) && (
+          <p className="text-[10px] text-muted-foreground">{formatUSD(Math.abs(m.monto), cotizacion ?? null)}</p>
+        )}
+      </div>
 
       {/* Tres puntitos — solo visibles en desktop (hover) */}
       <button

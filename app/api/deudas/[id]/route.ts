@@ -13,7 +13,7 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
     const id = Number(params.id);
     if (!id) return NextResponse.json({ error: "Id inválido" }, { status: 400 });
 
-    await sql`DELETE FROM deudas WHERE id = ${id} AND usuario_id = ${usuarioId}`;
+    await sql`SELECT eliminar_deuda(${usuarioId}, ${id})`;
 
     return NextResponse.json({ ok: true });
   } catch (error) {

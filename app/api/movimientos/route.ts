@@ -57,15 +57,19 @@ export async function POST(request: Request) {
     `;
     const movimientoId = rows[0].id;
 
-    // Si se compartió el gasto, la parte de la otra persona queda como
-    // un pendiente a favor ("me deben"), vinculado a este movimiento.
-    if (compartir?.persona_nombre?.trim() && compartir?.monto) {
-      await sql`
-        SELECT crear_deuda(
-          ${usuarioId}, ${compartir.persona_nombre.trim()}, 'ME_DEBEN', ${compartir.monto},
-          ${descripcion}, ${fecha ?? null}, ${movimientoId}
-        )
-      `;
+    // Si se compartió el gasto, la parte de cada persona queda como un
+    // pendiente a favor ("me deben"), vinculado a este movimiento. El split
+    // (igualitario o personalizado) ya viene calculado desde MovimientoModal.
+    if (Array.isArray(compartir?.personas)) {
+      for (const p of compartir.personas) {
+        if (!p.persona_nombre?.trim() || !p.monto) continue;
+        await sql`
+          SELECT crear_deuda(
+            ${usuarioId}, ${p.persona_nombre.trim()}, 'ME_DEBEN', ${p.monto},
+            ${descripcion}, ${fecha ?? null}, ${movimientoId}
+          )
+        `;
+      }
     }
 
     return NextResponse.json({ id: movimientoId }, { status: 201 });
