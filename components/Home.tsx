@@ -25,7 +25,7 @@ import { DeudaModal } from "@/components/DeudaModal";
 import { GastoFijoModal } from "@/components/GastoFijoModal";
 import { PersonaDetalleModal } from "@/components/PersonaDetalleModal";
 import { AjustesModal } from "@/components/AjustesModal";
-import { MobileShell } from "@/components/MobileShell";
+import { MobileShell, SWIPE_EASE } from "@/components/MobileShell";
 import { periodoActual, sumarMeses, formatPeriodoLabel } from "@/lib/periodo";
 
 type ModalState = { mode: "closed" } | { mode: "new" } | { mode: "edit"; movimiento: Movimiento };
@@ -270,11 +270,27 @@ export function Home({
     fijos: "Gastos fijos",
   };
 
-  // sólo estas pestañas quedan acotadas a un mes — Personas y Fijos no
+  // sólo estas pestañas quedan acotadas a un mes — Personas y Fijos no.
+  // lo mantengo siempre montado (nunca hago unmount condicional) y animo su
+  // colapso con grid-template-rows + opacity: así, al deslizar entre una
+  // pestaña con mes y una sin mes, se va desapareciendo en sync con el swipe
+  // (0.3s, mismo easing) en vez de saltar de golpe a mitad de la animación
   const TABS_CON_MES: TabId[] = ["resumen", "movimientos", "graficos"];
-  const mesSwitcher = TABS_CON_MES.includes(tab) ? (
-    <MonthSwitcher label={periodoLabel} onAnterior={irMesAnterior} onSiguiente={irMesSiguiente} esMesActual={esMesActual} />
-  ) : null;
+  const mostrarMesSwitcher = TABS_CON_MES.includes(tab);
+  const mesSwitcher = (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateRows: mostrarMesSwitcher ? "1fr" : "0fr",
+        opacity: mostrarMesSwitcher ? 1 : 0,
+        transition: `grid-template-rows 0.3s ${SWIPE_EASE}, opacity 0.22s ${SWIPE_EASE}`,
+      }}
+    >
+      <div className="overflow-hidden">
+        <MonthSwitcher label={periodoLabel} onAnterior={irMesAnterior} onSiguiente={irMesSiguiente} esMesActual={esMesActual} />
+      </div>
+    </div>
+  );
 
   const abrirNuevo = () => {
     if (tab === "personas") setDeudaModalAbierta(true);

@@ -6,7 +6,7 @@ import { RefreshCw } from "lucide-react";
 const PULL_THRESHOLD = 68;
 const MAX_PULL = 92;
 const INDICATOR_SIZE = 34;
-const SWIPE_EASE = "cubic-bezier(0.22, 0.61, 0.36, 1)";
+export const SWIPE_EASE = "cubic-bezier(0.22, 0.61, 0.36, 1)";
 
 export function MobileShell({
   header,
