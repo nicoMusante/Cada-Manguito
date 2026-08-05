@@ -1,5 +1,6 @@
 import { Dumbbell, Home as HomeIcon, Zap, Coffee, ShoppingBag, Wallet, LucideIcon } from "lucide-react";
 import { ICONS } from "./icons";
+import { parseFechaLocal } from "./periodo";
 
 export type Categoria = { name: string; icon: LucideIcon; color: string };
 
@@ -67,7 +68,7 @@ export function mapMovimiento(row: MovimientoRow): Movimiento {
     cat: row.categoria,
     monto: row.tipo === "GASTO" ? -monto : monto,
     tipo: row.tipo === "INGRESO" ? "in" : "out",
-    fecha: new Date(row.fecha).toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
+    fecha: parseFechaLocal(row.fecha).toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
     fechaISO: row.fecha,
     icon: (row.icono && ICONS[row.icono]) || Wallet,
   };

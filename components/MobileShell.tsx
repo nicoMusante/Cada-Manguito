@@ -204,7 +204,7 @@ export function MobileShell({
                 key={i}
                 ref={(el) => { panelRefs.current[i] = el; }}
                 style={{ width: `${100 / panels.length}%` }}
-                className="shrink-0 h-full overflow-y-auto overscroll-contain"
+                className="shrink-0 h-full overflow-y-auto overscroll-contain no-scrollbar"
               >
                 <div className="pb-24">{panel}</div>
               </div>

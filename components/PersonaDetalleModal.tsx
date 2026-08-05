@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { X, Check, Trash2, Square, CheckSquare, ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { parseFechaLocal } from "@/lib/periodo";
 
 type Pago = { id: number; monto: string; fecha: string };
 
@@ -248,7 +249,7 @@ export function PersonaDetalleModal({
                             {h.descripcion}
                           </p>
                           <p className="text-[10px] text-muted-foreground">
-                            {new Date(h.fecha).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
+                            {parseFechaLocal(h.fecha).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
                             {h.estado === "saldado" && " · saldado"}
                             {h.estado === "pendiente" && pagado > 0 && ` · ${h.tipo === "ME_DEBEN" ? "pagó" : "pagaste"} ${fmt(pagado)}`}
                           </p>
@@ -274,7 +275,7 @@ export function PersonaDetalleModal({
                             {h.pagos.map((pg) => (
                               <div key={pg.id} className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
                                 <span className="flex-1">
-                                  {new Date(pg.fecha).toLocaleDateString("es-AR", { day: "numeric", month: "short" })} — {fmt(Number(pg.monto))}
+                                  {parseFechaLocal(pg.fecha).toLocaleDateString("es-AR", { day: "numeric", month: "short" })} — {fmt(Number(pg.monto))}
                                 </span>
                                 <button onClick={() => handleEliminarPago(pg.id)} aria-label="Deshacer pago">
                                   <Trash2 size={12} className="text-muted-foreground" />

@@ -6,22 +6,25 @@ export function MonthSwitcher({
   label, onAnterior, onSiguiente, esMesActual,
 }: { label: string; onAnterior: () => void; onSiguiente: () => void; esMesActual: boolean }) {
   return (
-    <div data-swipe-ignore className="flex items-center justify-between px-5 lg:px-0 mt-4 lg:mt-6">
+    <div
+      data-swipe-ignore
+      className="sticky lg:static top-0 z-10 flex items-center justify-between px-5 lg:px-0 pt-3 pb-1.5 lg:pt-6 lg:pb-0 bg-card"
+    >
       <button
         onClick={onAnterior}
         aria-label="Mes anterior"
-        className="w-8 h-8 rounded-full flex items-center justify-center bg-secondary text-foreground"
+        className="w-6 h-6 rounded-full flex items-center justify-center bg-secondary text-foreground"
       >
-        <ChevronLeft size={16} />
+        <ChevronLeft size={13} />
       </button>
-      <p className="text-[12.5px] lg:text-[14px] font-medium capitalize text-foreground">{label}</p>
+      <p className="text-[11.5px] lg:text-[14px] font-medium capitalize text-foreground">{label}</p>
       <button
         onClick={onSiguiente}
         disabled={esMesActual}
         aria-label="Mes siguiente"
-        className="w-8 h-8 rounded-full flex items-center justify-center bg-secondary text-foreground disabled:opacity-30"
+        className="w-6 h-6 rounded-full flex items-center justify-center bg-secondary text-foreground disabled:opacity-30"
       >
-        <ChevronRight size={16} />
+        <ChevronRight size={13} />
       </button>
     </div>
   );

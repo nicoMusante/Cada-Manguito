@@ -8,6 +8,19 @@
 -- agregan columnas a tablas que ya existen.
 --------------------------------------------------------------------------
 
+-- ========================= HELPERS =========================
+
+-- La app asume siempre el huso horario de Argentina: reemplaza a CURRENT_DATE
+-- en todos los defaults/funciones de fecha (movimientos, deudas, pagos, día
+-- de gastos fijos, etc.) para que reflejen el día calendario de Buenos Aires,
+-- no el de UTC. Neon corre en GMT por default, y un ALTER DATABASE ... SET
+-- timezone no alcanza: el driver HTTP (@neondatabase/serverless) abre una
+-- sesión nueva por cada query y no hereda ese default — hay que resolver el
+-- huso adentro de cada expresión, explícito, con AT TIME ZONE.
+CREATE OR REPLACE FUNCTION hoy_ar() RETURNS DATE AS $$
+    SELECT (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date;
+$$ LANGUAGE sql STABLE;
+
 -- ========================= TABLAS =========================
 
 CREATE TABLE IF NOT EXISTS usuarios (
@@ -42,7 +55,7 @@ CREATE TABLE IF NOT EXISTS gastos_fijos (
     descripcion     VARCHAR(120)  NOT NULL,
     monto           NUMERIC(14,2) NOT NULL,
     dia_mes         INTEGER       NOT NULL DEFAULT 1,
-    mes_inicio      VARCHAR(7)    NOT NULL DEFAULT TO_CHAR(CURRENT_DATE, 'YYYY-MM'), -- período (YYYY-MM) desde el que empieza a generar movimientos
+    mes_inicio      VARCHAR(7)    NOT NULL DEFAULT TO_CHAR(hoy_ar(), 'YYYY-MM'), -- período (YYYY-MM) desde el que empieza a generar movimientos
     cuotas_totales  INTEGER,                                                        -- cantidad de meses a generar; null = recurrente sin límite
     mes_fin         VARCHAR(7),                                                     -- último período que genera, calculado a partir de mes_inicio + cuotas_totales
     activo          BOOLEAN       NOT NULL DEFAULT TRUE,
@@ -58,7 +71,7 @@ CREATE TABLE IF NOT EXISTS movimientos (
     categoria_id   INTEGER       NOT NULL REFERENCES categorias(id),
     descripcion    VARCHAR(120)  NOT NULL,
     monto          NUMERIC(14,2) NOT NULL,       -- siempre positivo; el signo lo da categorias.tipo
-    fecha          DATE          NOT NULL DEFAULT CURRENT_DATE,
+    fecha          DATE          NOT NULL DEFAULT hoy_ar(),
     creado_en      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     gasto_fijo_id  INTEGER       REFERENCES gastos_fijos(id),  -- si no es null, este movimiento lo generó un gasto fijo
     CONSTRAINT chk_monto_positivo CHECK (monto > 0)
@@ -82,7 +95,7 @@ CREATE TABLE IF NOT EXISTS deudas (
     tipo           VARCHAR(10)   NOT NULL,       -- 'ME_DEBEN' o 'YO_DEBO'
     monto          NUMERIC(14,2) NOT NULL,
     descripcion    VARCHAR(120),
-    fecha          DATE          NOT NULL DEFAULT CURRENT_DATE,
+    fecha          DATE          NOT NULL DEFAULT hoy_ar(),
     estado         VARCHAR(10)   NOT NULL DEFAULT 'pendiente',  -- 'pendiente' o 'saldado'
     creado_en      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     movimiento_id  INTEGER REFERENCES movimientos(id),          -- opcional: gasto compartido que la originó
@@ -104,7 +117,7 @@ CREATE TABLE IF NOT EXISTS pagos_deuda (
     id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     deuda_id    INTEGER       NOT NULL REFERENCES deudas(id) ON DELETE CASCADE,
     monto       NUMERIC(14,2) NOT NULL,
-    fecha       DATE          NOT NULL DEFAULT CURRENT_DATE,
+    fecha       DATE          NOT NULL DEFAULT hoy_ar(),
     creado_en   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_pago_deuda_monto_positivo CHECK (monto > 0)
 );
@@ -247,7 +260,7 @@ BEGIN
         RAISE EXCEPTION 'La cantidad de cuotas tiene que ser mayor a 0.';
     END IF;
 
-    v_mes_inicio := TO_CHAR(CASE WHEN p_proximo_mes THEN CURRENT_DATE + INTERVAL '1 month' ELSE CURRENT_DATE END, 'YYYY-MM');
+    v_mes_inicio := TO_CHAR(CASE WHEN p_proximo_mes THEN hoy_ar() + INTERVAL '1 month' ELSE hoy_ar() END, 'YYYY-MM');
     IF p_cuotas_totales IS NOT NULL THEN
         v_mes_fin := TO_CHAR(TO_DATE(v_mes_inicio || '-01', 'YYYY-MM-DD') + ((p_cuotas_totales - 1) * INTERVAL '1 month'), 'YYYY-MM');
     END IF;
@@ -279,20 +292,21 @@ CREATE OR REPLACE FUNCTION generar_gastos_fijos_pendientes(p_usuario_id INTEGER)
 DECLARE
     v_gf      RECORD;
     v_fecha   DATE;
+    v_hoy     DATE := hoy_ar();
     v_periodo VARCHAR(7);
     v_creados INTEGER := 0;
 BEGIN
-    v_periodo := TO_CHAR(CURRENT_DATE, 'YYYY-MM');
+    v_periodo := TO_CHAR(v_hoy, 'YYYY-MM');
     FOR v_gf IN SELECT * FROM gastos_fijos WHERE activo = true AND usuario_id = p_usuario_id LOOP
         IF v_periodo >= v_gf.mes_inicio
            AND (v_gf.mes_fin IS NULL OR v_periodo <= v_gf.mes_fin)
-           AND EXTRACT(DAY FROM CURRENT_DATE) >= v_gf.dia_mes
+           AND EXTRACT(DAY FROM v_hoy) >= v_gf.dia_mes
            AND NOT EXISTS (
             SELECT 1 FROM movimientos
             WHERE gasto_fijo_id = v_gf.id
               AND TO_CHAR(fecha, 'YYYY-MM') = v_periodo
         ) THEN
-            v_fecha := make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int, EXTRACT(MONTH FROM CURRENT_DATE)::int, v_gf.dia_mes);
+            v_fecha := make_date(EXTRACT(YEAR FROM v_hoy)::int, EXTRACT(MONTH FROM v_hoy)::int, v_gf.dia_mes);
             INSERT INTO movimientos (usuario_id, categoria_id, descripcion, monto, fecha, gasto_fijo_id)
             VALUES (p_usuario_id, v_gf.categoria_id, v_gf.descripcion, v_gf.monto, v_fecha, v_gf.id);
             v_creados := v_creados + 1;
@@ -309,7 +323,7 @@ CREATE OR REPLACE FUNCTION insertar_movimiento(
     p_categoria_id  INTEGER,
     p_descripcion   VARCHAR,
     p_monto         NUMERIC,
-    p_fecha         DATE DEFAULT CURRENT_DATE
+    p_fecha         DATE DEFAULT NULL
 ) RETURNS INTEGER AS $$
 DECLARE
     v_activo BOOLEAN;
@@ -324,7 +338,7 @@ BEGIN
     END IF;
 
     INSERT INTO movimientos (usuario_id, categoria_id, descripcion, monto, fecha)
-    VALUES (p_usuario_id, p_categoria_id, p_descripcion, p_monto, COALESCE(p_fecha, CURRENT_DATE))
+    VALUES (p_usuario_id, p_categoria_id, p_descripcion, p_monto, COALESCE(p_fecha, hoy_ar()))
     RETURNING id INTO v_id;
 
     RETURN v_id;
@@ -398,7 +412,7 @@ BEGIN
         COALESCE(SUM(v.monto_con_signo), 0)
     FROM v_movimientos v
     WHERE v.usuario_id = p_usuario_id
-      AND v.mes >= (DATE_TRUNC('month', CURRENT_DATE) - (p_cant_meses - 1) * INTERVAL '1 month')
+      AND v.mes >= (DATE_TRUNC('month', hoy_ar()) - (p_cant_meses - 1) * INTERVAL '1 month')
     GROUP BY v.periodo
     ORDER BY v.periodo;
 END;
@@ -436,7 +450,7 @@ CREATE OR REPLACE FUNCTION crear_deuda(
     p_tipo            VARCHAR,   -- 'ME_DEBEN' o 'YO_DEBO'
     p_monto           NUMERIC,
     p_descripcion     VARCHAR,
-    p_fecha           DATE DEFAULT CURRENT_DATE,
+    p_fecha           DATE DEFAULT NULL,
     p_movimiento_id   INTEGER DEFAULT NULL
 ) RETURNS INTEGER AS $$
 DECLARE
@@ -446,7 +460,7 @@ BEGIN
     v_persona_id := obtener_o_crear_persona(p_usuario_id, p_persona_nombre);
 
     INSERT INTO deudas (usuario_id, persona_id, tipo, monto, descripcion, fecha, movimiento_id, estado)
-    VALUES (p_usuario_id, v_persona_id, p_tipo, p_monto, p_descripcion, COALESCE(p_fecha, CURRENT_DATE), p_movimiento_id, 'pendiente')
+    VALUES (p_usuario_id, v_persona_id, p_tipo, p_monto, p_descripcion, COALESCE(p_fecha, hoy_ar()), p_movimiento_id, 'pendiente')
     RETURNING id INTO v_id;
 
     RETURN v_id;
