@@ -11,6 +11,7 @@ import {
   type GastoFijo, type GastoFijoRow,
 } from "@/lib/mockData";
 import { Header } from "@/components/Header";
+import { MonthSwitcher } from "@/components/MonthSwitcher";
 import { ResumenView } from "@/components/ResumenView";
 import { MovimientosView } from "@/components/MovimientosView";
 import { GraficosView } from "@/components/GraficosView";
@@ -215,10 +216,6 @@ export function Home({
       onSelectMovimiento={abrirEdicion}
       onAddCategoria={() => setCategoriaModalAbierta(true)}
       onEliminarCategoria={handleEliminarCategoria}
-      periodoLabel={periodoLabel}
-      onMesAnterior={irMesAnterior}
-      onMesSiguiente={irMesSiguiente}
-      esMesActual={esMesActual}
       cotizacion={cotizacion}
     />
   );
@@ -227,10 +224,6 @@ export function Home({
       movimientos={movimientos}
       loading={loading}
       onSelectMovimiento={abrirEdicion}
-      periodoLabel={periodoLabel}
-      onMesAnterior={irMesAnterior}
-      onMesSiguiente={irMesSiguiente}
-      esMesActual={esMesActual}
       cotizacion={cotizacion}
     />
   );
@@ -239,10 +232,6 @@ export function Home({
       movimientos={movimientos}
       loading={loading}
       categorias={categorias}
-      periodoLabel={periodoLabel}
-      onMesAnterior={irMesAnterior}
-      onMesSiguiente={irMesSiguiente}
-      esMesActual={esMesActual}
     />
   );
   const personasPanel = (
@@ -281,6 +270,12 @@ export function Home({
     fijos: "Gastos fijos",
   };
 
+  // sólo estas pestañas quedan acotadas a un mes — Personas y Fijos no
+  const TABS_CON_MES: TabId[] = ["resumen", "movimientos", "graficos"];
+  const mesSwitcher = TABS_CON_MES.includes(tab) ? (
+    <MonthSwitcher label={periodoLabel} onAnterior={irMesAnterior} onSiguiente={irMesSiguiente} esMesActual={esMesActual} />
+  ) : null;
+
   const abrirNuevo = () => {
     if (tab === "personas") setDeudaModalAbierta(true);
     else if (tab === "fijos") setGastoFijoModalAbierto(true);
@@ -299,6 +294,7 @@ export function Home({
           <Sidebar active={tab} onChange={setTab} />
           <div className="hidden lg:block flex-1">
             <Header title={titles[tab]} themeName={themeName} usuario={usuario} onToggleModo={handleToggleModo} onOpenAjustes={() => setAjustesModalAbierto(true)} />
+            {mesSwitcher}
             {panelesPorTab[tab]}
           </div>
 
@@ -306,7 +302,10 @@ export function Home({
           <div className="lg:hidden">
             <MobileShell
               header={
-                <Header title={titles[tab]} themeName={themeName} usuario={usuario} onToggleModo={handleToggleModo} onOpenAjustes={() => setAjustesModalAbierto(true)} />
+                <>
+                  <Header title={titles[tab]} themeName={themeName} usuario={usuario} onToggleModo={handleToggleModo} onOpenAjustes={() => setAjustesModalAbierto(true)} />
+                  {mesSwitcher}
+                </>
               }
               index={TAB_IDS.indexOf(tab)}
               onIndexChange={(i) => setTab(TAB_IDS[i])}

@@ -48,7 +48,7 @@ export function MovimientoItem({
 
   return (
     <div
-      className={`w-full flex items-center gap-3 py-2.5 border-b border-border last:border-0 select-none transition-opacity ${pressing ? "opacity-60" : "opacity-100"}`}
+      className={`w-full flex items-center gap-3 py-2.5 fila-picada select-none transition-opacity ${pressing ? "opacity-60" : "opacity-100"}`}
       style={{ userSelect: "none", WebkitUserSelect: "none" }}
       onTouchStart={startPress}
       onTouchEnd={onTouchEnd}
@@ -57,7 +57,7 @@ export function MovimientoItem({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-muted">
+      <div className="icono-cosido w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-muted">
         <m.icon size={15} className="text-foreground" />
       </div>
 
@@ -67,11 +67,11 @@ export function MovimientoItem({
       </div>
 
       <div className="text-right shrink-0">
-        <p className={`text-[13px] font-semibold ${m.tipo === "in" ? "text-income" : "text-foreground"}`}>
+        <p className={`text-[13px] font-semibold monto ${m.tipo === "in" ? "text-income" : "text-foreground"}`}>
           {m.tipo === "in" ? "+" : "-"}{fmt(Math.abs(m.monto))}
         </p>
         {formatUSD(Math.abs(m.monto), cotizacion ?? null) && (
-          <p className="text-[10px] text-muted-foreground">{formatUSD(Math.abs(m.monto), cotizacion ?? null)}</p>
+          <p className="text-[10px] text-muted-foreground monto">{formatUSD(Math.abs(m.monto), cotizacion ?? null)}</p>
         )}
       </div>
 

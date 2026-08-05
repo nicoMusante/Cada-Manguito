@@ -8,7 +8,7 @@ export function MonthSwitcher({
   return (
     <div
       data-swipe-ignore
-      className="sticky lg:static top-0 z-10 flex items-center justify-between px-5 lg:px-0 pt-3 pb-1.5 lg:pt-6 lg:pb-0 bg-card"
+      className="flex items-center justify-between px-5 lg:px-0 pt-3 pb-2 lg:pt-4 lg:pb-1"
     >
       <button
         onClick={onAnterior}

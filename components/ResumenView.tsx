@@ -5,7 +5,6 @@ import { TrendingDown, TrendingUp, Clock, Plus, X, Check, ChevronDown } from "lu
 import { computeTotals, fmt, type Movimiento, type CategoriaConId } from "@/lib/mockData";
 import { formatUSD, type Cotizacion } from "@/lib/dolar";
 import { MovimientoItem } from "@/components/MovimientoItem";
-import { MonthSwitcher } from "@/components/MonthSwitcher";
 import { Card, CardContent } from "@/components/ui/card";
 
 // cuánto tiempo queda "armada" la confirmación de borrado antes de cancelarse
@@ -18,7 +17,7 @@ const CAP_CATEGORIAS = 7;
 
 export function ResumenView({
   movimientos, loading, categorias, meDeben, yoDebo, onSelectMovimiento, onAddCategoria, onEliminarCategoria,
-  periodoLabel, onMesAnterior, onMesSiguiente, esMesActual, cotizacion,
+  cotizacion,
 }: {
   movimientos: Movimiento[];
   loading: boolean;
@@ -28,10 +27,6 @@ export function ResumenView({
   onSelectMovimiento: (m: Movimiento) => void;
   onAddCategoria: () => void;
   onEliminarCategoria: (id: number) => void;
-  periodoLabel: string;
-  onMesAnterior: () => void;
-  onMesSiguiente: () => void;
-  esMesActual: boolean;
   cotizacion?: Cotizacion | null;
 }) {
   const [categoriasFiltro, setCategoriasFiltro] = useState<Set<number>>(new Set());
@@ -77,21 +72,19 @@ export function ResumenView({
 
   return (
     <div className="pb-4 lg:pb-0">
-      <MonthSwitcher label={periodoLabel} onAnterior={onMesAnterior} onSiguiente={onMesSiguiente} esMesActual={esMesActual} />
-
       {/* en mobile estos 3 bloques se apilan en orden normal (balance, categorías,
           stats); en desktop se reacomodan con lg:order sin tocar el DOM, así el
           balance queda al lado de las stat cards en vez de arriba de todo */}
       <div className="lg:grid lg:grid-cols-6 lg:gap-4 lg:items-stretch lg:mt-6">
       <div className="px-5 lg:px-0 mt-5 lg:mt-0 lg:order-1 lg:col-span-2 lg:row-span-2">
         <Card className="border-none shadow-sm bg-secondary lg:h-full">
-          <CardContent className="p-4 lg:p-6 lg:h-full lg:flex lg:flex-col lg:justify-center">
+          <CardContent className="libreta p-4 lg:p-6 lg:h-full lg:flex lg:flex-col lg:justify-center">
             <p className="text-[12px] lg:text-[13px] text-muted-foreground">Balance del mes</p>
-            <p className="text-[34px] lg:text-[40px] font-bold mt-1 text-foreground tabular-nums">
+            <p className="text-[34px] lg:text-[40px] font-bold mt-1 text-foreground monto">
               {fmt(ingresos - gastos)}
             </p>
             {formatUSD(ingresos - gastos, cotizacion ?? null) && (
-              <p className="text-[12px] text-muted-foreground tabular-nums">{formatUSD(ingresos - gastos, cotizacion ?? null)}</p>
+              <p className="text-[12px] text-muted-foreground monto">{formatUSD(ingresos - gastos, cotizacion ?? null)}</p>
             )}
           </CardContent>
         </Card>
@@ -107,13 +100,14 @@ export function ResumenView({
           return (
             <div
               key={c.id}
-              className="shrink-0 flex items-center gap-1.5 rounded-full pl-3.5 pr-2 py-2 text-white transition"
+              className="chip-etiqueta shrink-0 flex items-center gap-1.5 pr-2 py-2 text-white transition"
               style={{
                 backgroundColor: confirmando ? "hsl(var(--expense))" : c.color,
                 opacity: hayFiltro && !seleccionada && !confirmando ? 0.45 : 1,
                 boxShadow: seleccionada && !confirmando ? "0 0 0 2px rgba(255,255,255,0.85) inset" : "none",
               }}
             >
+              <span className="chip-etiqueta-agujero" />
               <button
                 type="button"
                 onClick={() => toggleFiltroCategoria(c.id)}
@@ -183,9 +177,9 @@ export function ResumenView({
           <CardContent className="p-3.5 lg:p-5">
             <TrendingDown size={16} className="lg:w-[18px] lg:h-[18px] text-expense" />
             <p className="text-[10.5px] lg:text-[12px] mt-2 text-expense/80">Gastado</p>
-            <p className="text-[16px] lg:text-[21px] font-bold mt-0.5 text-expense tabular-nums">{fmt(gastos)}</p>
+            <p className="text-[16px] lg:text-[21px] font-bold mt-0.5 text-expense monto">{fmt(gastos)}</p>
             {formatUSD(gastos, cotizacion ?? null) && (
-              <p className="text-[10px] text-expense/70 tabular-nums">{formatUSD(gastos, cotizacion ?? null)}</p>
+              <p className="text-[10px] text-expense/70 monto">{formatUSD(gastos, cotizacion ?? null)}</p>
             )}
           </CardContent>
         </Card>
@@ -193,9 +187,9 @@ export function ResumenView({
           <CardContent className="p-3.5 lg:p-5">
             <TrendingUp size={16} className="lg:w-[18px] lg:h-[18px] text-income" />
             <p className="text-[10.5px] lg:text-[12px] mt-2 text-income/80">Ingresado</p>
-            <p className="text-[16px] lg:text-[21px] font-bold mt-0.5 text-income tabular-nums">{fmt(ingresos)}</p>
+            <p className="text-[16px] lg:text-[21px] font-bold mt-0.5 text-income monto">{fmt(ingresos)}</p>
             {formatUSD(ingresos, cotizacion ?? null) && (
-              <p className="text-[10px] text-income/70 tabular-nums">{formatUSD(ingresos, cotizacion ?? null)}</p>
+              <p className="text-[10px] text-income/70 monto">{formatUSD(ingresos, cotizacion ?? null)}</p>
             )}
           </CardContent>
         </Card>
@@ -206,7 +200,7 @@ export function ResumenView({
               <Clock size={12} className="text-expense" />
               <p className="text-[9.5px] lg:text-[11px] text-expense">Debés</p>
             </div>
-            <p className="text-[13px] lg:text-[15px] font-bold mt-0.5 text-expense tabular-nums">{fmt(yoDebo)}</p>
+            <p className="text-[13px] lg:text-[15px] font-bold mt-0.5 text-expense monto">{fmt(yoDebo)}</p>
           </CardContent>
         </Card>
         <Card className="border-dashed border-income/40 bg-income-soft/60 shadow-none">
@@ -215,7 +209,7 @@ export function ResumenView({
               <Clock size={12} className="text-income" />
               <p className="text-[9.5px] lg:text-[11px] text-income">Te deben</p>
             </div>
-            <p className="text-[13px] lg:text-[15px] font-bold mt-0.5 text-income tabular-nums">{fmt(meDeben)}</p>
+            <p className="text-[13px] lg:text-[15px] font-bold mt-0.5 text-income monto">{fmt(meDeben)}</p>
           </CardContent>
         </Card>
       </div>

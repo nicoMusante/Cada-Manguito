@@ -3,19 +3,14 @@
 import { type Movimiento } from "@/lib/mockData";
 import type { Cotizacion } from "@/lib/dolar";
 import { MovimientoItem } from "@/components/MovimientoItem";
-import { MonthSwitcher } from "@/components/MonthSwitcher";
 import { Card, CardContent } from "@/components/ui/card";
 
 export function MovimientosView({
-  movimientos, loading, onSelectMovimiento, periodoLabel, onMesAnterior, onMesSiguiente, esMesActual, cotizacion,
+  movimientos, loading, onSelectMovimiento, cotizacion,
 }: {
   movimientos: Movimiento[];
   loading: boolean;
   onSelectMovimiento: (m: Movimiento) => void;
-  periodoLabel: string;
-  onMesAnterior: () => void;
-  onMesSiguiente: () => void;
-  esMesActual: boolean;
   cotizacion?: Cotizacion | null;
 }) {
   const grouped = movimientos.reduce<Record<string, Movimiento[]>>((acc, m) => {
@@ -26,9 +21,7 @@ export function MovimientosView({
 
   return (
     <div className="pb-4 lg:pb-0">
-      <MonthSwitcher label={periodoLabel} onAnterior={onMesAnterior} onSiguiente={onMesSiguiente} esMesActual={esMesActual} />
-
-      <p className="px-5 lg:px-0 mt-1 lg:mt-6 text-[11.5px] lg:text-[13px] text-muted-foreground">
+      <p className="px-5 lg:px-0 mt-3 lg:mt-6 text-[11.5px] lg:text-[13px] text-muted-foreground">
         {movimientos.length} movimientos
       </p>
 

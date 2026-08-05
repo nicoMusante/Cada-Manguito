@@ -8,7 +8,6 @@ import {
 } from "recharts";
 import { SlidersHorizontal, X, Check, PieChart as PieChartIcon, ListOrdered, CalendarDays } from "lucide-react";
 import { fmt, type Movimiento, type CategoriaConId } from "@/lib/mockData";
-import { MonthSwitcher } from "@/components/MonthSwitcher";
 import { Card, CardContent } from "@/components/ui/card";
 
 // tooltip propio para que los charts respeten el tema activo en vez del
@@ -28,15 +27,11 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 }
 
 export function GraficosView({
-  movimientos, loading, categorias, periodoLabel, onMesAnterior, onMesSiguiente, esMesActual,
+  movimientos, loading, categorias,
 }: {
   movimientos: Movimiento[];
   loading: boolean;
   categorias: CategoriaConId[];
-  periodoLabel: string;
-  onMesAnterior: () => void;
-  onMesSiguiente: () => void;
-  esMesActual: boolean;
 }) {
   const categoriasGasto = categorias.filter((c) => c.tipo === "GASTO");
 
@@ -110,10 +105,8 @@ export function GraficosView({
 
   return (
     <div className="pb-4 lg:pb-0">
-      <MonthSwitcher label={periodoLabel} onAnterior={onMesAnterior} onSiguiente={onMesSiguiente} esMesActual={esMesActual} />
-
       {/* filtros: categoría, monto y fecha, agrupados en un panel */}
-      <div className="px-5 lg:px-0 mt-5 lg:mt-6">
+      <div className="px-5 lg:px-0 mt-3 lg:mt-6">
         <button
           type="button"
           onClick={() => setFiltrosAbiertos(true)}
