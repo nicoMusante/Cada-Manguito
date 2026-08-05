@@ -2,6 +2,7 @@
 
 import { ChevronRight, HandCoins, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatUSD, type Cotizacion } from "@/lib/dolar";
 
 export type PersonaActiva = { persona_id: number; nombre: string; neto: string; ultimo_detalle: string | null };
 export type DeudaSaldada = { id: number; nombre: string; monto: string; saldado_en: string };
@@ -9,15 +10,17 @@ export type DeudaSaldada = { id: number; nombre: string; monto: string; saldado_
 const fmt = (n: number) => n.toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
 
 export function PersonasView({
-  activas, saldadas, loading, onSelectPersona, onChanged,
+  activas, saldadas, loading, onSelectPersona, onChanged, cotizacion,
 }: {
   activas: PersonaActiva[];
   saldadas: DeudaSaldada[];
   loading: boolean;
   onSelectPersona: (id: number) => void;
   onChanged: () => void;
+  cotizacion?: Cotizacion | null;
 }) {
   async function handleDeleteSaldada(id: number) {
+    if (!confirm("¿Eliminar esta deuda saldada? No se puede deshacer.")) return;
     try {
       const res = await fetch(`/api/deudas/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("No se pudo eliminar.");
@@ -34,9 +37,14 @@ export function PersonasView({
       <div className="px-5 lg:px-0 mt-1 lg:mt-6 flex items-center justify-between">
         <p className="text-[11.5px] lg:text-[13px] text-muted-foreground">Balance neto</p>
         {activas.length > 0 && (
-          <p className={`text-[13px] font-semibold tabular-nums ${totalNeto >= 0 ? "text-income" : "text-expense"}`}>
-            {totalNeto >= 0 ? "+" : "-"}{fmt(Math.abs(totalNeto))}
-          </p>
+          <div className="text-right">
+            <p className={`text-[13px] font-semibold tabular-nums ${totalNeto >= 0 ? "text-income" : "text-expense"}`}>
+              {totalNeto >= 0 ? "+" : "-"}{fmt(Math.abs(totalNeto))}
+            </p>
+            {formatUSD(Math.abs(totalNeto), cotizacion ?? null) && (
+              <p className="text-[10px] text-muted-foreground tabular-nums">{formatUSD(Math.abs(totalNeto), cotizacion ?? null)}</p>
+            )}
+          </div>
         )}
       </div>
 
@@ -48,7 +56,7 @@ export function PersonasView({
           <p className="text-[12.5px] text-muted-foreground">No tenés deudas pendientes con nadie.</p>
         </div>
       ) : (
-        <div className="px-5 lg:px-0 mt-4 grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-3">
+        <div className="px-5 lg:px-0 mt-4 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2 lg:gap-3">
           {activas.map((p) => {
             const neto = Number(p.neto);
             const teDeben = neto > 0;
@@ -77,6 +85,9 @@ export function PersonasView({
                       <p className={`text-[15px] font-bold tabular-nums ${teDeben ? "text-income" : "text-expense"}`}>
                         {teDeben ? "+" : "-"}{fmt(Math.abs(neto))}
                       </p>
+                      {formatUSD(Math.abs(neto), cotizacion ?? null) && (
+                        <p className="text-[9.5px] text-muted-foreground tabular-nums">{formatUSD(Math.abs(neto), cotizacion ?? null)}</p>
+                      )}
                       <p className="text-[9.5px] text-muted-foreground">{teDeben ? "te debe" : "le debés"}</p>
                     </div>
                     <ChevronRight size={15} className="text-muted-foreground" />

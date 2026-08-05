@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TrendingDown, TrendingUp, Clock, Plus, X, Check } from "lucide-react";
+import { TrendingDown, TrendingUp, Clock, Plus, X, Check, ChevronDown } from "lucide-react";
 import { computeTotals, fmt, type Movimiento, type CategoriaConId } from "@/lib/mockData";
+import { formatUSD, type Cotizacion } from "@/lib/dolar";
 import { MovimientoItem } from "@/components/MovimientoItem";
 import { MonthSwitcher } from "@/components/MonthSwitcher";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,9 +13,12 @@ import { Card, CardContent } from "@/components/ui/card";
 // confirmación para siempre
 const MS_AUTOCANCELAR_BORRADO = 4000;
 
+// cantidad de categorías visibles antes de tener que desplegar el resto
+const CAP_CATEGORIAS = 7;
+
 export function ResumenView({
   movimientos, loading, categorias, meDeben, yoDebo, onSelectMovimiento, onAddCategoria, onEliminarCategoria,
-  periodoLabel, onMesAnterior, onMesSiguiente, esMesActual,
+  periodoLabel, onMesAnterior, onMesSiguiente, esMesActual, cotizacion,
 }: {
   movimientos: Movimiento[];
   loading: boolean;
@@ -28,9 +32,11 @@ export function ResumenView({
   onMesAnterior: () => void;
   onMesSiguiente: () => void;
   esMesActual: boolean;
+  cotizacion?: Cotizacion | null;
 }) {
   const [categoriasFiltro, setCategoriasFiltro] = useState<Set<number>>(new Set());
   const [confirmarEliminarId, setConfirmarEliminarId] = useState<number | null>(null);
+  const [categoriasExpandidas, setCategoriasExpandidas] = useState(false);
 
   // si no se confirma en unos segundos, se cancela sola — así un toque
   // accidental en la x no deja el chip trabado pidiendo confirmación
@@ -73,22 +79,29 @@ export function ResumenView({
     <div className="pb-4 lg:pb-0">
       <MonthSwitcher label={periodoLabel} onAnterior={onMesAnterior} onSiguiente={onMesSiguiente} esMesActual={esMesActual} />
 
-      <div className="px-5 lg:px-0 mt-5 lg:mt-6">
-        <Card className="border-none shadow-sm bg-secondary">
-          <CardContent className="p-4 lg:p-6">
+      {/* en mobile estos 3 bloques se apilan en orden normal (balance, categorías,
+          stats); en desktop se reacomodan con lg:order sin tocar el DOM, así el
+          balance queda al lado de las stat cards en vez de arriba de todo */}
+      <div className="lg:grid lg:grid-cols-6 lg:gap-4 lg:items-stretch lg:mt-6">
+      <div className="px-5 lg:px-0 mt-5 lg:mt-0 lg:order-1 lg:col-span-2 lg:row-span-2">
+        <Card className="border-none shadow-sm bg-secondary lg:h-full">
+          <CardContent className="p-4 lg:p-6 lg:h-full lg:flex lg:flex-col lg:justify-center">
             <p className="text-[12px] lg:text-[13px] text-muted-foreground">Balance del mes</p>
             <p className="text-[34px] lg:text-[40px] font-bold mt-1 text-foreground tabular-nums">
               {fmt(ingresos - gastos)}
             </p>
+            {formatUSD(ingresos - gastos, cotizacion ?? null) && (
+              <p className="text-[12px] text-muted-foreground tabular-nums">{formatUSD(ingresos - gastos, cotizacion ?? null)}</p>
+            )}
           </CardContent>
         </Card>
       </div>
 
       <div
         data-swipe-ignore
-        className="mt-5 flex gap-2 overflow-x-auto overscroll-x-contain no-scrollbar px-5 lg:px-0 lg:flex-wrap"
+        className="mt-5 flex gap-2 overflow-x-auto overscroll-x-contain no-scrollbar px-5 lg:px-0 lg:flex-wrap lg:order-3 lg:col-span-6 lg:mt-4"
       >
-        {categorias.map((c) => {
+        {(categoriasExpandidas ? categorias : categorias.slice(0, CAP_CATEGORIAS)).map((c) => {
           const seleccionada = categoriasFiltro.has(c.id);
           const confirmando = confirmarEliminarId === c.id;
           return (
@@ -147,6 +160,15 @@ export function ResumenView({
             </div>
           );
         })}
+        {categorias.length > CAP_CATEGORIAS && (
+          <button
+            onClick={() => setCategoriasExpandidas((v) => !v)}
+            className="shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 border border-dashed border-muted-foreground/50 text-muted-foreground"
+          >
+            <ChevronDown size={13} className={categoriasExpandidas ? "rotate-180" : ""} />
+            <span className="text-[11.5px]">{categoriasExpandidas ? "Ver menos" : "Ver más"}</span>
+          </button>
+        )}
         <button
           onClick={onAddCategoria}
           className="shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 border border-dashed border-muted-foreground/50 text-muted-foreground"
@@ -156,12 +178,15 @@ export function ResumenView({
         </button>
       </div>
 
-      <div className="px-5 lg:px-0 mt-6 grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3">
+      <div className="px-5 lg:px-0 mt-6 lg:mt-0 grid grid-cols-2 lg:grid-cols-2 gap-2.5 lg:gap-3 lg:order-2 lg:col-span-4">
         <Card className="border-none shadow-sm bg-expense-soft">
           <CardContent className="p-3.5 lg:p-5">
             <TrendingDown size={16} className="lg:w-[18px] lg:h-[18px] text-expense" />
             <p className="text-[10.5px] lg:text-[12px] mt-2 text-expense/80">Gastado</p>
             <p className="text-[16px] lg:text-[21px] font-bold mt-0.5 text-expense tabular-nums">{fmt(gastos)}</p>
+            {formatUSD(gastos, cotizacion ?? null) && (
+              <p className="text-[10px] text-expense/70 tabular-nums">{formatUSD(gastos, cotizacion ?? null)}</p>
+            )}
           </CardContent>
         </Card>
         <Card className="border-none shadow-sm bg-income-soft">
@@ -169,6 +194,9 @@ export function ResumenView({
             <TrendingUp size={16} className="lg:w-[18px] lg:h-[18px] text-income" />
             <p className="text-[10.5px] lg:text-[12px] mt-2 text-income/80">Ingresado</p>
             <p className="text-[16px] lg:text-[21px] font-bold mt-0.5 text-income tabular-nums">{fmt(ingresos)}</p>
+            {formatUSD(ingresos, cotizacion ?? null) && (
+              <p className="text-[10px] text-income/70 tabular-nums">{formatUSD(ingresos, cotizacion ?? null)}</p>
+            )}
           </CardContent>
         </Card>
 
@@ -190,6 +218,7 @@ export function ResumenView({
             <p className="text-[13px] lg:text-[15px] font-bold mt-0.5 text-income tabular-nums">{fmt(meDeben)}</p>
           </CardContent>
         </Card>
+      </div>
       </div>
 
       <div className="px-5 lg:px-0 mt-7">
@@ -214,7 +243,7 @@ export function ResumenView({
         ) : (
           <div>
             {movimientosAMostrar.map((m) => (
-              <MovimientoItem key={m.id} m={m} subtitle={m.fecha} onEdit={() => onSelectMovimiento(m)} />
+              <MovimientoItem key={m.id} m={m} subtitle={m.fecha} onEdit={() => onSelectMovimiento(m)} cotizacion={cotizacion} />
             ))}
           </div>
         )}

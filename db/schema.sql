@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     nombre         VARCHAR(80)  NOT NULL,
     google_id      VARCHAR(255) UNIQUE,
     tema           VARCHAR(20)  NOT NULL DEFAULT 'dark',  -- preferencia de tema de UI, ver lib/theme.ts (ThemeName)
+    tipo_dolar     VARCHAR(20)  NOT NULL DEFAULT 'blue',  -- cotización a usar para mostrar equivalentes en USD, ver lib/dolar.ts (DolarTipo)
     creado_en      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -70,11 +71,14 @@ CREATE TABLE IF NOT EXISTS movimientos (
     usuario_id     INTEGER       NOT NULL REFERENCES usuarios(id),
     categoria_id   INTEGER       NOT NULL REFERENCES categorias(id),
     descripcion    VARCHAR(120)  NOT NULL,
-    monto          NUMERIC(14,2) NOT NULL,       -- siempre positivo; el signo lo da categorias.tipo
+    monto          NUMERIC(14,2) NOT NULL,       -- nunca negativo; el signo lo da categorias.tipo
     fecha          DATE          NOT NULL DEFAULT hoy_ar(),
     creado_en      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     gasto_fijo_id  INTEGER       REFERENCES gastos_fijos(id),  -- si no es null, este movimiento lo generó un gasto fijo
-    CONSTRAINT chk_monto_positivo CHECK (monto > 0)
+    -- puede llegar a 0 si un gasto compartido se cobra por completo (ver
+    -- pagar_movimiento/saldar_persona/saldar_deudas/eliminar_deuda, que
+    -- descuentan de acá la parte ya cobrada de la deuda vinculada)
+    CONSTRAINT chk_monto_positivo CHECK (monto >= 0)
 );
 CREATE INDEX IF NOT EXISTS ix_movimientos_fecha      ON movimientos (fecha);
 CREATE INDEX IF NOT EXISTS ix_movimientos_cat_fecha  ON movimientos (categoria_id, fecha);
@@ -98,7 +102,9 @@ CREATE TABLE IF NOT EXISTS deudas (
     fecha          DATE          NOT NULL DEFAULT hoy_ar(),
     estado         VARCHAR(10)   NOT NULL DEFAULT 'pendiente',  -- 'pendiente' o 'saldado'
     creado_en      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    movimiento_id  INTEGER REFERENCES movimientos(id),          -- opcional: gasto compartido que la originó
+    -- opcional: gasto compartido que la originó. ON DELETE CASCADE porque si
+    -- se borra el movimiento, las deudas que generó dejan de tener sentido
+    movimiento_id  INTEGER REFERENCES movimientos(id) ON DELETE CASCADE,
     saldado_en     TIMESTAMP,
     CONSTRAINT chk_deuda_tipo   CHECK (tipo IN ('ME_DEBEN', 'YO_DEBO')),
     CONSTRAINT chk_deuda_estado CHECK (estado IN ('pendiente', 'saldado')),
@@ -180,7 +186,6 @@ BEGIN
         (p_usuario_id, 'Sueldo',         'INGRESO', '#2F6F5E', 'wallet'),
         (p_usuario_id, 'Freelance',      'INGRESO', '#3E7A63', 'wallet'),
         (p_usuario_id, 'Otros ingresos', 'INGRESO', '#C9A227', 'wallet'),
-        (p_usuario_id, 'Padel',          'GASTO',   '#2F6F5E', 'dumbbell'),
         (p_usuario_id, 'Casa',           'GASTO',   '#B8562F', 'home'),
         (p_usuario_id, 'Servicios',      'GASTO',   '#8A6D3B', 'zap'),
         (p_usuario_id, 'Comida',         'GASTO',   '#4A5D6B', 'coffee'),
@@ -467,8 +472,26 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Si la deuda que se salda vino de un gasto compartido (movimiento_id), la
+-- parte todavía no cobrada pasa a contar como gasto propio en ese movimiento
+-- (ver misma lógica en pagar_movimiento y eliminar_deuda).
 CREATE OR REPLACE FUNCTION saldar_persona(p_usuario_id INTEGER, p_persona_id INTEGER) RETURNS VOID AS $$
+DECLARE
+    v_deuda RECORD;
 BEGIN
+    FOR v_deuda IN
+        SELECT d.id, d.monto, d.movimiento_id, COALESCE(SUM(pg.monto), 0) AS pagado
+        FROM deudas d
+        LEFT JOIN pagos_deuda pg ON pg.deuda_id = d.id
+        WHERE d.persona_id = p_persona_id AND d.usuario_id = p_usuario_id AND d.estado = 'pendiente'
+        GROUP BY d.id, d.monto, d.movimiento_id
+    LOOP
+        IF v_deuda.movimiento_id IS NOT NULL THEN
+            UPDATE movimientos SET monto = GREATEST(monto - (v_deuda.monto - v_deuda.pagado), 0)
+            WHERE id = v_deuda.movimiento_id AND usuario_id = p_usuario_id;
+        END IF;
+    END LOOP;
+
     UPDATE deudas
     SET estado = 'saldado', saldado_en = CURRENT_TIMESTAMP
     WHERE persona_id = p_persona_id AND usuario_id = p_usuario_id AND estado = 'pendiente';
@@ -476,30 +499,82 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Salda puntualmente una o varias entradas de deuda (elegidas por id), sin
--- tocar el resto de las pendientes de la persona.
+-- tocar el resto de las pendientes de la persona. Misma lógica de descuento
+-- del movimiento vinculado que saldar_persona.
 CREATE OR REPLACE FUNCTION saldar_deudas(p_usuario_id INTEGER, p_ids INTEGER[]) RETURNS VOID AS $$
+DECLARE
+    v_deuda RECORD;
 BEGIN
+    FOR v_deuda IN
+        SELECT d.id, d.monto, d.movimiento_id, COALESCE(SUM(pg.monto), 0) AS pagado
+        FROM deudas d
+        LEFT JOIN pagos_deuda pg ON pg.deuda_id = d.id
+        WHERE d.id = ANY(p_ids) AND d.usuario_id = p_usuario_id AND d.estado = 'pendiente'
+        GROUP BY d.id, d.monto, d.movimiento_id
+    LOOP
+        IF v_deuda.movimiento_id IS NOT NULL THEN
+            UPDATE movimientos SET monto = GREATEST(monto - (v_deuda.monto - v_deuda.pagado), 0)
+            WHERE id = v_deuda.movimiento_id AND usuario_id = p_usuario_id;
+        END IF;
+    END LOOP;
+
     UPDATE deudas
     SET estado = 'saldado', saldado_en = CURRENT_TIMESTAMP
     WHERE id = ANY(p_ids) AND usuario_id = p_usuario_id AND estado = 'pendiente';
 END;
 $$ LANGUAGE plpgsql;
 
+-- Borra una entrada de deuda entera. Si vino de un gasto compartido, lo que
+-- todavía estaba pendiente de cobro (monto - ya pagado) pasa a contar como
+-- gasto propio en el movimiento que la originó; si ya estaba todo pagado
+-- (vía pagar_movimiento) no descuenta de nuevo, porque eso ya se descontó
+-- en su momento.
+CREATE OR REPLACE FUNCTION eliminar_deuda(p_usuario_id INTEGER, p_id INTEGER) RETURNS VOID AS $$
+DECLARE
+    v_monto         NUMERIC;
+    v_movimiento_id INTEGER;
+    v_pagado        NUMERIC;
+BEGIN
+    SELECT d.monto, d.movimiento_id, COALESCE(SUM(pg.monto), 0)
+    INTO v_monto, v_movimiento_id, v_pagado
+    FROM deudas d
+    LEFT JOIN pagos_deuda pg ON pg.deuda_id = d.id
+    WHERE d.id = p_id AND d.usuario_id = p_usuario_id
+    GROUP BY d.monto, d.movimiento_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'La deuda indicada no existe.';
+    END IF;
+
+    IF v_movimiento_id IS NOT NULL THEN
+        UPDATE movimientos SET monto = GREATEST(monto - (v_monto - v_pagado), 0)
+        WHERE id = v_movimiento_id AND usuario_id = p_usuario_id;
+    END IF;
+
+    DELETE FROM deudas WHERE id = p_id AND usuario_id = p_usuario_id;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Registra el pago de una cuota (parte o el total) de una entrada de deuda
 -- puntual. Si la cuota cubre lo que quedaba pendiente, la deuda se marca
--- saldada sola; si no, sigue pendiente con el saldo ya descontado.
+-- saldada sola; si no, sigue pendiente con el saldo ya descontado. Si la
+-- deuda vino de un gasto compartido (movimiento_id), lo cobrado se descuenta
+-- del movimiento — así ese gasto refleja lo que realmente terminás poniendo
+-- de tu bolsillo a medida que te van pagando.
 CREATE OR REPLACE FUNCTION pagar_movimiento(p_usuario_id INTEGER, p_deuda_id INTEGER, p_monto NUMERIC) RETURNS VOID AS $$
 DECLARE
-    v_monto_total NUMERIC;
-    v_estado      VARCHAR(10);
-    v_pagado      NUMERIC;
-    v_saldo       NUMERIC;
+    v_monto_total   NUMERIC;
+    v_estado        VARCHAR(10);
+    v_movimiento_id INTEGER;
+    v_pagado        NUMERIC;
+    v_saldo         NUMERIC;
 BEGIN
     IF p_monto <= 0 THEN
         RAISE EXCEPTION 'El monto a pagar debe ser mayor a cero.';
     END IF;
 
-    SELECT monto, estado INTO v_monto_total, v_estado FROM deudas WHERE id = p_deuda_id AND usuario_id = p_usuario_id;
+    SELECT monto, estado, movimiento_id INTO v_monto_total, v_estado, v_movimiento_id
+    FROM deudas WHERE id = p_deuda_id AND usuario_id = p_usuario_id;
     IF NOT FOUND THEN
         RAISE EXCEPTION 'El movimiento indicado no existe.';
     END IF;
@@ -519,17 +594,25 @@ BEGIN
     IF p_monto = v_saldo THEN
         UPDATE deudas SET estado = 'saldado', saldado_en = CURRENT_TIMESTAMP WHERE id = p_deuda_id;
     END IF;
+
+    IF v_movimiento_id IS NOT NULL THEN
+        UPDATE movimientos SET monto = GREATEST(monto - p_monto, 0)
+        WHERE id = v_movimiento_id AND usuario_id = p_usuario_id;
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Deshace un pago puntual de cuota; si la deuda se había saldado sola con
 -- esa cuota, la reabre. El dueño se valida vía la deuda (pagos_deuda no
--- tiene usuario_id propio).
+-- tiene usuario_id propio). Si la deuda vino de un gasto compartido, le
+-- devuelve al movimiento lo que se le había descontado por ese pago.
 CREATE OR REPLACE FUNCTION eliminar_pago(p_usuario_id INTEGER, p_pago_id INTEGER) RETURNS VOID AS $$
 DECLARE
-    v_deuda_id INTEGER;
+    v_deuda_id      INTEGER;
+    v_monto         NUMERIC;
+    v_movimiento_id INTEGER;
 BEGIN
-    SELECT pg.deuda_id INTO v_deuda_id
+    SELECT pg.deuda_id, pg.monto, d.movimiento_id INTO v_deuda_id, v_monto, v_movimiento_id
     FROM pagos_deuda pg
     JOIN deudas d ON d.id = pg.deuda_id
     WHERE pg.id = p_pago_id AND d.usuario_id = p_usuario_id;
@@ -541,5 +624,10 @@ BEGIN
 
     UPDATE deudas SET estado = 'pendiente', saldado_en = NULL
     WHERE id = v_deuda_id AND estado = 'saldado';
+
+    IF v_movimiento_id IS NOT NULL THEN
+        UPDATE movimientos SET monto = monto + v_monto
+        WHERE id = v_movimiento_id AND usuario_id = p_usuario_id;
+    END IF;
 END;
 $$ LANGUAGE plpgsql;

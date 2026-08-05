@@ -11,11 +11,15 @@ export async function GET() {
     const usuarioId = await getUsuarioId();
     if (!usuarioId) return noAutenticado();
 
+    // ordeno por uso (categorías con más movimientos primero) y a igualdad
+    // de uso, alfabético
     const rows = await sql`
-      SELECT id, nombre, tipo, color_hex, icono
-      FROM categorias
-      WHERE activo = true AND usuario_id = ${usuarioId}
-      ORDER BY tipo, nombre
+      SELECT c.id, c.nombre, c.tipo, c.color_hex, c.icono
+      FROM categorias c
+      LEFT JOIN movimientos m ON m.categoria_id = c.id AND m.usuario_id = c.usuario_id
+      WHERE c.activo = true AND c.usuario_id = ${usuarioId}
+      GROUP BY c.id
+      ORDER BY COUNT(m.id) DESC, c.nombre ASC
     `;
     return NextResponse.json(rows, { headers: { "Cache-Control": "no-store, max-age=0" } });
   } catch (error) {

@@ -2,16 +2,18 @@
 
 import { Trash2, Plus } from "lucide-react";
 import { fmt, type GastoFijo } from "@/lib/mockData";
+import { formatUSD, type Cotizacion } from "@/lib/dolar";
 import { Card, CardContent } from "@/components/ui/card";
 import { periodoActual, formatPeriodoLabel } from "@/lib/periodo";
 
 export function GastosFijosView({
-  gastosFijos, loading, onEliminar, onNuevo,
+  gastosFijos, loading, onEliminar, onNuevo, cotizacion,
 }: {
   gastosFijos: GastoFijo[];
   loading: boolean;
   onEliminar: (id: number) => void;
   onNuevo: () => void;
+  cotizacion?: Cotizacion | null;
 }) {
   const total = gastosFijos.reduce((acc, g) => acc + g.monto, 0);
 
@@ -24,7 +26,12 @@ export function GastosFijosView({
       <div className="px-5 lg:px-0 mt-1 lg:mt-6 flex items-center justify-between">
         <p className="text-[11.5px] lg:text-[13px] text-muted-foreground">Total fijo por mes</p>
         {gastosFijos.length > 0 && (
-          <p className="text-[13px] font-semibold text-expense tabular-nums">{fmt(total)}</p>
+          <div className="text-right">
+            <p className="text-[13px] font-semibold text-expense tabular-nums">{fmt(total)}</p>
+            {formatUSD(total, cotizacion ?? null) && (
+              <p className="text-[10px] text-muted-foreground tabular-nums">{formatUSD(total, cotizacion ?? null)}</p>
+            )}
+          </div>
         )}
       </div>
 
@@ -35,7 +42,7 @@ export function GastosFijosView({
           Todavía no cargaste ningún gasto fijo o recurrente.
         </p>
       ) : (
-        <div className="px-5 lg:px-0 mt-4 space-y-1.5">
+        <div className="px-5 lg:px-0 mt-4 space-y-1.5 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">
           {gastosFijos.map((g) => {
             const empiezaEnElFuturo = g.mesInicio > periodoActual();
             const cuotaActual = Math.min(g.cuotasGeneradas + 1, g.cuotasTotales ?? Infinity);
@@ -53,7 +60,12 @@ export function GastosFijosView({
                       {empiezaEnElFuturo && ` · desde ${formatPeriodoLabel(g.mesInicio)}`}
                     </p>
                   </div>
-                  <p className="text-[13px] font-semibold shrink-0 text-foreground tabular-nums">{fmt(g.monto)}</p>
+                  <div className="text-right shrink-0">
+                    <p className="text-[13px] font-semibold text-foreground tabular-nums">{fmt(g.monto)}</p>
+                    {formatUSD(g.monto, cotizacion ?? null) && (
+                      <p className="text-[9.5px] text-muted-foreground tabular-nums">{formatUSD(g.monto, cotizacion ?? null)}</p>
+                    )}
+                  </div>
                   <button onClick={() => handleEliminar(g)} className="shrink-0" aria-label="Eliminar">
                     <Trash2 size={13} className="text-muted-foreground" />
                   </button>

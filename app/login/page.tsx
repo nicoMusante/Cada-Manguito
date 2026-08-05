@@ -74,21 +74,6 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="flex items-center gap-3 my-5">
-          <div className="flex-1 h-px bg-border" />
-          <span className="text-[11px] text-muted-foreground">o</span>
-          <div className="flex-1 h-px bg-border" />
-        </div>
-
-        <Button
-          type="button"
-          onClick={() => signIn("google", { callbackUrl: "/" })}
-          variant="secondary"
-          className="w-full rounded-xl py-3 h-auto text-[13.5px] font-medium shadow-none"
-        >
-          Continuar con Google
-        </Button>
-
         <p className="text-[12.5px] text-center mt-5 text-muted-foreground">
           ¿No tenés cuenta?{" "}
           <Link href="/registro" className="font-medium text-foreground">
