@@ -1,6 +1,7 @@
 import { Home as HomeIcon, Zap, Coffee, ShoppingBag, Wallet, LucideIcon } from "lucide-react";
 import { ICONS } from "./icons";
 import { parseFechaLocal } from "./periodo";
+import type { Cotizacion } from "./dolar";
 
 export type Categoria = { name: string; icon: LucideIcon; color: string };
 
@@ -39,6 +40,8 @@ export type Movimiento = {
   desc: string;
   cat: string;
   monto: number;
+  moneda: "ARS" | "USD";
+  montoOriginal: number | null; // monto tal cual se tipeó, sólo cuando moneda === "USD"
   tipo: "in" | "out";
   fecha: string;
   fechaISO: string;
@@ -55,6 +58,8 @@ export type MovimientoRow = {
   color_hex: string | null;
   icono: string | null;
   monto: string; // numeric de Postgres llega como string
+  moneda: "ARS" | "USD";
+  monto_original: string | null;
   fecha: string; // fecha llega como string ISO
 };
 
@@ -66,6 +71,8 @@ export function mapMovimiento(row: MovimientoRow): Movimiento {
     desc: row.descripcion,
     cat: row.categoria,
     monto: row.tipo === "GASTO" ? -monto : monto,
+    moneda: row.moneda,
+    montoOriginal: row.monto_original !== null ? Number(row.monto_original) : null,
     tipo: row.tipo === "INGRESO" ? "in" : "out",
     fecha: parseFechaLocal(row.fecha).toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
     fechaISO: row.fecha,
@@ -121,9 +128,23 @@ export function mapGastoFijo(row: GastoFijoRow): GastoFijo {
   };
 }
 
-export function computeTotals(movimientos: Movimiento[]) {
-  const ingresos = movimientos.filter((m) => m.tipo === "in").reduce((a, b) => a + b.monto, 0);
-  const gastos = Math.abs(movimientos.filter((m) => m.tipo === "out").reduce((a, b) => a + b.monto, 0));
+// para movimientos cargados en USD, el equivalente en pesos ya no es fijo:
+// se recalcula en vivo con la cotización actual (así, al cambiar el tipo de
+// dólar en Ajustes, sólo se mueven los montos de lo que se cargó en dólares
+// — lo cargado en pesos es plata ya gastada/cobrada y no varía). Si todavía
+// no cargó la cotización, usa el monto en pesos que quedó guardado al cargar
+// el movimiento, como valor de referencia mientras tanto.
+export function montoEfectivoArs(m: Movimiento, cotizacion: Cotizacion | null): number {
+  if (m.moneda === "USD" && m.montoOriginal != null && cotizacion?.venta) {
+    const equivalente = m.montoOriginal * cotizacion.venta;
+    return m.tipo === "out" ? -equivalente : equivalente;
+  }
+  return m.monto;
+}
+
+export function computeTotals(movimientos: Movimiento[], cotizacion: Cotizacion | null = null) {
+  const ingresos = movimientos.filter((m) => m.tipo === "in").reduce((a, b) => a + montoEfectivoArs(b, cotizacion), 0);
+  const gastos = Math.abs(movimientos.filter((m) => m.tipo === "out").reduce((a, b) => a + montoEfectivoArs(b, cotizacion), 0));
   return { ingresos, gastos };
 }
 

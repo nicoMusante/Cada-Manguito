@@ -3,17 +3,21 @@
 import { useEffect, useState } from "react";
 import { X, Check, Trash2 } from "lucide-react";
 import { type CategoriaConId, type CategoriaRow, type Movimiento, mapCategoria } from "@/lib/mockData";
+import { formatMontoInput, parseMontoInput, numberToMontoDisplay } from "@/lib/formatMonto";
+import { type Cotizacion } from "@/lib/dolar";
 import { Button } from "@/components/ui/button";
 import { CategoriaModal } from "@/components/CategoriaModal";
 import { CategoriaSelector } from "@/components/CategoriaSelector";
 
 export function MovimientoModal({
   movimiento,
+  cotizacion,
   onClose,
   onSaved,
   onCategoriaCreada,
 }: {
   movimiento?: Movimiento | null; // si viene, es modo edición
+  cotizacion?: Cotizacion | null;
   onClose: () => void;
   onSaved: () => void;
   onCategoriaCreada?: () => void;
@@ -24,7 +28,12 @@ export function MovimientoModal({
   const [tipo, setTipo] = useState<"GASTO" | "INGRESO">(movimiento?.tipo === "in" ? "INGRESO" : "GASTO");
   const [categoriaId, setCategoriaId] = useState<number | null>(movimiento?.categoriaId ?? null);
   const [descripcion, setDescripcion] = useState(movimiento?.desc ?? "");
-  const [monto, setMonto] = useState(movimiento ? String(Math.abs(movimiento.monto)) : "");
+  const [moneda, setMoneda] = useState<"ARS" | "USD">(movimiento?.moneda ?? "ARS");
+  const [monto, setMonto] = useState(() => {
+    if (!movimiento) return "";
+    const esUsd = movimiento.moneda === "USD" && movimiento.montoOriginal != null;
+    return numberToMontoDisplay(esUsd ? movimiento.montoOriginal! : Math.abs(movimiento.monto), esUsd);
+  });
   const [fecha, setFecha] = useState(() => {
     if (movimiento) return movimiento.fechaISO.slice(0, 10);
     // fecha local de hoy, no toISOString() (es UTC y puede dar el día
@@ -81,21 +90,22 @@ export function MovimientoModal({
   function calcularSplit(): { resultado: { nombre: string; monto: number }[]; error: string | null } {
     const nombradas = personasCompartidas.filter((p) => p.nombre.trim());
     if (nombradas.length === 0) return { resultado: [], error: null };
-    const montoNum = Number(monto) || 0;
+    const montoNum = Number(parseMontoInput(monto)) || 0;
+    const montoArsBase = moneda === "USD" && cotizacion?.venta ? montoNum * cotizacion.venta : montoNum;
 
     if (!montoPersonalizado) {
-      const share = montoNum / (nombradas.length + 1);
+      const share = montoArsBase / (nombradas.length + 1);
       return { resultado: nombradas.map((p) => ({ nombre: p.nombre.trim(), monto: share })), error: null };
     }
 
-    const conMonto = nombradas.filter((p) => Number(p.monto) > 0);
-    const sinMonto = nombradas.filter((p) => !(Number(p.monto) > 0));
-    const sumaCustom = conMonto.reduce((acc, p) => acc + Number(p.monto), 0);
-    const restante = montoNum - sumaCustom;
+    const conMonto = nombradas.filter((p) => Number(parseMontoInput(p.monto)) > 0);
+    const sinMonto = nombradas.filter((p) => !(Number(parseMontoInput(p.monto)) > 0));
+    const sumaCustom = conMonto.reduce((acc, p) => acc + Number(parseMontoInput(p.monto)), 0);
+    const restante = montoArsBase - sumaCustom;
 
     if (sinMonto.length === 0) {
       if (restante < 0) return { resultado: [], error: "Los montos personalizados suman más que el total." };
-      return { resultado: conMonto.map((p) => ({ nombre: p.nombre.trim(), monto: Number(p.monto) })), error: null };
+      return { resultado: conMonto.map((p) => ({ nombre: p.nombre.trim(), monto: Number(parseMontoInput(p.monto)) })), error: null };
     }
     if (restante <= 0) {
       return { resultado: [], error: "Los montos personalizados ya suman el total o más." };
@@ -103,7 +113,7 @@ export function MovimientoModal({
     const shareRestante = restante / (sinMonto.length + 1);
     return {
       resultado: [
-        ...conMonto.map((p) => ({ nombre: p.nombre.trim(), monto: Number(p.monto) })),
+        ...conMonto.map((p) => ({ nombre: p.nombre.trim(), monto: Number(parseMontoInput(p.monto)) })),
         ...sinMonto.map((p) => ({ nombre: p.nombre.trim(), monto: shareRestante })),
       ],
       error: null,
@@ -118,15 +128,24 @@ export function MovimientoModal({
     setCategoriaId(primera ? primera.id : null);
   }
 
+  function handleMonedaChange(nuevaMoneda: "ARS" | "USD") {
+    if (nuevaMoneda === moneda) return;
+    setMoneda(nuevaMoneda);
+    if (nuevaMoneda === "ARS") setMonto((prev) => prev.split(",")[0]);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    const montoNum = Number(monto);
+    const montoNum = Number(parseMontoInput(monto));
     if (!categoriaId) return setError("Elegí una categoría.");
     if (!descripcion.trim()) return setError("Agregá una descripción.");
     if (!montoNum || montoNum <= 0) return setError("El monto tiene que ser mayor a 0.");
     if (!esEdicion && tipo === "GASTO" && compartir && errorCompartir) return setError(errorCompartir);
+    if (moneda === "USD" && !cotizacion?.venta) return setError("No se pudo obtener la cotización. Probá de nuevo en un momento.");
+
+    const montoArs = moneda === "USD" ? montoNum * cotizacion!.venta : montoNum;
 
     setEnviando(true);
     try {
@@ -139,7 +158,9 @@ export function MovimientoModal({
         body: JSON.stringify({
           categoria_id: categoriaId,
           descripcion: descripcion.trim(),
-          monto: montoNum,
+          monto: montoArs,
+          moneda,
+          monto_original: moneda === "USD" ? montoNum : null,
           fecha,
           ...(!esEdicion && tipo === "GASTO" && compartir && previewCompartir.length > 0
             ? { compartir: { personas: previewCompartir.map((p) => ({ persona_nombre: p.nombre, monto: p.monto })) } }
@@ -277,10 +298,32 @@ export function MovimientoModal({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Monto</label>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Monto</label>
+                  <div className="flex rounded-full p-0.5 bg-secondary shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleMonedaChange("ARS")}
+                      className={`px-1.5 py-0.5 rounded-full text-[9.5px] font-medium transition ${
+                        moneda === "ARS" ? "bg-card text-foreground" : "text-muted-foreground"
+                      }`}
+                    >
+                      $
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleMonedaChange("USD")}
+                      className={`px-1.5 py-0.5 rounded-full text-[9.5px] font-medium transition ${
+                        moneda === "USD" ? "bg-card text-foreground" : "text-muted-foreground"
+                      }`}
+                    >
+                      US$
+                    </button>
+                  </div>
+                </div>
                 <input
                   value={monto}
-                  onChange={(e) => setMonto(e.target.value.replace(/[^0-9.]/g, ""))}
+                  onChange={(e) => setMonto(formatMontoInput(e.target.value, moneda === "USD"))}
                   placeholder="0"
                   inputMode="decimal"
                   className="w-full mt-1.5 rounded-xl px-3.5 py-2.5 text-[16px] font-semibold outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
@@ -332,7 +375,7 @@ export function MovimientoModal({
                           {montoPersonalizado && (
                             <input
                               value={p.monto}
-                              onChange={(e) => actualizarPersona(i, "monto", e.target.value.replace(/[^0-9.]/g, ""))}
+                              onChange={(e) => actualizarPersona(i, "monto", formatMontoInput(e.target.value, false))}
                               placeholder="Auto"
                               inputMode="decimal"
                               className="w-20 rounded-lg px-2.5 py-2 text-[13px] outline-none bg-card text-foreground focus:ring-2 focus:ring-ring"

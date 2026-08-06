@@ -102,7 +102,7 @@ export function AjustesModal({
 
           <SeccionAjuste
             icon={DollarSign}
-            titulo="Moneda"
+            titulo="Dólar usado"
             valorActual={DOLAR_LABELS[dolarActual]}
             abierta={seccionAbierta === "moneda"}
             onToggle={() => toggleSeccion("moneda")}

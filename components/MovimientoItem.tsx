@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { MoreVertical } from "lucide-react";
-import { type Movimiento, fmt } from "@/lib/mockData";
+import { type Movimiento, fmt, montoEfectivoArs } from "@/lib/mockData";
 import { formatUSD, type Cotizacion } from "@/lib/dolar";
 
 const LONG_PRESS_MS = 220;
@@ -67,11 +67,24 @@ export function MovimientoItem({
       </div>
 
       <div className="text-right shrink-0">
-        <p className={`text-[13px] font-semibold monto ${m.tipo === "in" ? "text-income" : "text-foreground"}`}>
-          {m.tipo === "in" ? "+" : "-"}{fmt(Math.abs(m.monto))}
-        </p>
-        {formatUSD(Math.abs(m.monto), cotizacion ?? null) && (
-          <p className="text-[10px] text-muted-foreground monto">{formatUSD(Math.abs(m.monto), cotizacion ?? null)}</p>
+        {m.moneda === "USD" && m.montoOriginal != null ? (
+          <>
+            <p className={`text-[13px] font-semibold monto ${m.tipo === "in" ? "text-income" : "text-foreground"}`}>
+              {m.tipo === "in" ? "+" : "-"}US$ {m.montoOriginal.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <p className="text-[10px] text-muted-foreground monto">
+              {fmt(Math.abs(montoEfectivoArs(m, cotizacion ?? null)))}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className={`text-[13px] font-semibold monto ${m.tipo === "in" ? "text-income" : "text-foreground"}`}>
+              {m.tipo === "in" ? "+" : "-"}{fmt(Math.abs(m.monto))}
+            </p>
+            {formatUSD(Math.abs(m.monto), cotizacion ?? null) && (
+              <p className="text-[10px] text-muted-foreground monto">{formatUSD(Math.abs(m.monto), cotizacion ?? null)}</p>
+            )}
+          </>
         )}
       </div>
 

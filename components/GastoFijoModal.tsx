@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { X, Check } from "lucide-react";
 import { type CategoriaConId, type CategoriaRow, mapCategoria } from "@/lib/mockData";
+import { formatMontoInput, parseMontoInput } from "@/lib/formatMonto";
 import { Button } from "@/components/ui/button";
 import { CategoriaModal } from "@/components/CategoriaModal";
 import { CategoriaSelector } from "@/components/CategoriaSelector";
@@ -45,7 +46,7 @@ export function GastoFijoModal({
     e.preventDefault();
     setError(null);
 
-    const montoNum = Number(monto);
+    const montoNum = Number(parseMontoInput(monto));
     const diaNum = Number(diaMes);
     const cuotasNum = Number(cuotas);
     if (!categoriaId) return setError("Elegí una categoría.");
@@ -124,7 +125,7 @@ export function GastoFijoModal({
               <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Monto</label>
               <input
                 value={monto}
-                onChange={(e) => setMonto(e.target.value.replace(/[^0-9.]/g, ""))}
+                onChange={(e) => setMonto(formatMontoInput(e.target.value, false))}
                 placeholder="0"
                 inputMode="decimal"
                 className="w-full mt-1.5 rounded-xl px-3.5 py-2.5 text-[16px] font-semibold outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
