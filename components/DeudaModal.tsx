@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatMontoInput, parseMontoInput, numberToMontoDisplay } from "@/lib/formatMonto";
+import type { TipoNuevoSelector } from "@/components/MovimientoModal";
 
 export type DeudaEditable = {
   id: number;
@@ -23,10 +24,12 @@ export function DeudaModal({
   deuda,
   onClose,
   onSaved,
+  tipoSelector,
 }: {
   deuda?: DeudaEditable | null; // si viene, es modo edición
   onClose: () => void;
   onSaved: () => void;
+  tipoSelector?: TipoNuevoSelector; // switch "Movimiento/Deuda" compartido con MovimientoModal, sólo al crear desde el FAB
 }) {
   const esEdicion = !!deuda;
 
@@ -87,11 +90,36 @@ export function DeudaModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
-          <p className="text-[15px] font-semibold text-foreground">{esEdicion ? "Editar deuda" : "Nueva deuda"}</p>
+          <p className="text-[15px] font-semibold text-foreground">
+            {esEdicion ? "Editar deuda" : tipoSelector ? "Nuevo" : "Nueva deuda"}
+          </p>
           <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-secondary text-foreground">
             <X size={16} />
           </button>
         </div>
+
+        {!esEdicion && tipoSelector && (
+          <div className="flex rounded-full p-1 mb-4 bg-secondary">
+            <button
+              type="button"
+              onClick={() => tipoSelector.onCambiar("movimiento")}
+              className={`flex-1 py-2 rounded-full text-[13px] font-medium transition ${
+                tipoSelector.actual === "movimiento" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              Movimiento
+            </button>
+            <button
+              type="button"
+              onClick={() => tipoSelector.onCambiar("deuda")}
+              className={`flex-1 py-2 rounded-full text-[13px] font-medium transition ${
+                tipoSelector.actual === "deuda" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              Deuda
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex rounded-full p-1 bg-secondary">

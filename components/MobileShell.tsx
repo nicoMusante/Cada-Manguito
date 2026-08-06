@@ -10,6 +10,8 @@ export const SWIPE_EASE = "cubic-bezier(0.22, 0.61, 0.36, 1)";
 
 export function MobileShell({
   header,
+  monthSwitcher,
+  hasMonth,
   panels,
   index,
   onIndexChange,
@@ -17,6 +19,8 @@ export function MobileShell({
   onRefresh,
 }: {
   header: React.ReactNode;
+  monthSwitcher: React.ReactNode;
+  hasMonth: boolean[]; // uno por panel, en el mismo orden que `panels`
   panels: React.ReactNode[];
   index: number;
   onIndexChange: (i: number) => void;
@@ -153,6 +157,15 @@ export function MobileShell({
   const transformValue = `translateX(calc(${basePercent}% + ${dragPx}px))`;
   const swipeTransition = dragging ? "none" : `transform 0.3s ${SWIPE_EASE}`;
 
+  // durante el arrastre sigo la posición real del dedo (no la pestaña recién
+  // asentada) para decidir si mostrar el mes: así, apenas cruzo la mitad
+  // hacia una pestaña sin mes, se oculta en el momento — nunca se lo llega a
+  // ver "colgado" mientras todavía tengo el dedo en la pantalla
+  const liveIndex = width > 0 ? index - dragPx / width : index;
+  const liveRounded = Math.min(Math.max(Math.round(liveIndex), 0), panels.length - 1);
+  const mostrarMes = hasMonth[liveRounded] ?? hasMonth[index];
+  const mesTransition = dragging ? "none" : `grid-template-rows 0.3s ${SWIPE_EASE}, opacity 0.22s ${SWIPE_EASE}`;
+
   return (
     <div
       ref={containerRef}
@@ -190,6 +203,17 @@ export function MobileShell({
         }}
       >
         <div className="shrink-0">{header}</div>
+        <div
+          className="shrink-0"
+          style={{
+            display: "grid",
+            gridTemplateRows: mostrarMes ? "1fr" : "0fr",
+            opacity: mostrarMes ? 1 : 0,
+            transition: mesTransition,
+          }}
+        >
+          <div className="overflow-hidden">{monthSwitcher}</div>
+        </div>
         <div ref={trackWrapRef} className="flex-1 min-h-0 overflow-hidden">
           <div
             className="flex items-stretch h-full"

@@ -9,18 +9,25 @@ import { Button } from "@/components/ui/button";
 import { CategoriaModal } from "@/components/CategoriaModal";
 import { CategoriaSelector } from "@/components/CategoriaSelector";
 
+export type TipoNuevoSelector = {
+  actual: "movimiento" | "deuda";
+  onCambiar: (tipo: "movimiento" | "deuda") => void;
+};
+
 export function MovimientoModal({
   movimiento,
   cotizacion,
   onClose,
   onSaved,
   onCategoriaCreada,
+  tipoSelector,
 }: {
   movimiento?: Movimiento | null; // si viene, es modo edición
   cotizacion?: Cotizacion | null;
   onClose: () => void;
   onSaved: () => void;
   onCategoriaCreada?: () => void;
+  tipoSelector?: TipoNuevoSelector; // switch "Movimiento/Deuda" compartido con DeudaModal, sólo al crear desde el FAB
 }) {
   const esEdicion = !!movimiento;
 
@@ -212,7 +219,7 @@ export function MovimientoModal({
       >
         <div className="flex items-center justify-between mb-5">
           <p className="text-[15px] font-semibold text-foreground">
-            {esEdicion ? "Editar movimiento" : "Nuevo movimiento"}
+            {esEdicion ? "Editar movimiento" : tipoSelector ? "Nuevo" : "Nuevo movimiento"}
           </p>
           <div className="flex items-center gap-2">
             {esEdicion && (
@@ -229,6 +236,29 @@ export function MovimientoModal({
             </button>
           </div>
         </div>
+
+        {!esEdicion && tipoSelector && (
+          <div className="flex rounded-full p-1 mb-4 bg-secondary">
+            <button
+              type="button"
+              onClick={() => tipoSelector.onCambiar("movimiento")}
+              className={`flex-1 py-2 rounded-full text-[13px] font-medium transition ${
+                tipoSelector.actual === "movimiento" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              Movimiento
+            </button>
+            <button
+              type="button"
+              onClick={() => tipoSelector.onCambiar("deuda")}
+              className={`flex-1 py-2 rounded-full text-[13px] font-medium transition ${
+                tipoSelector.actual === "deuda" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              Deuda
+            </button>
+          </div>
+        )}
 
         {confirmarBorrado ? (
           <div className="space-y-4">

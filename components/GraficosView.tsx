@@ -110,7 +110,7 @@ export function GraficosView({
         <button
           type="button"
           onClick={() => setFiltrosAbiertos(true)}
-          className="flex items-center gap-1.5 rounded-full pl-3.5 pr-3 py-2 text-[12.5px] lg:text-[13px] font-medium border text-foreground bg-secondary"
+          className="flex items-center gap-1.5 rounded-full pl-3.5 pr-3 py-1.5 text-[12.5px] lg:text-[13px] font-medium border text-foreground bg-secondary"
           style={{ borderColor: hayFiltro ? "hsl(var(--primary))" : "transparent" }}
         >
           <SlidersHorizontal size={13} /> Filtrar
@@ -222,7 +222,7 @@ export function GraficosView({
       )}
 
       {/* charts */}
-      <div className="px-5 lg:px-0 mt-6">
+      <div className="px-5 lg:px-0 mt-4">
         {loading ? (
           <p className="text-[12.5px] text-muted-foreground">Cargando movimientos...</p>
         ) : !hayDatos ? (

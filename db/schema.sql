@@ -521,8 +521,8 @@ BEGIN
         CASE
             WHEN p_tipo_deuda = 'ME_DEBEN' AND p_parcial     THEN 'Cobro parcial de deuda a '
             WHEN p_tipo_deuda = 'ME_DEBEN' AND NOT p_parcial THEN 'Cobro de deuda a '
-            WHEN p_tipo_deuda = 'YO_DEBO'  AND p_parcial     THEN 'Pago parcial de deuda de '
-            ELSE                                                  'Pago de deuda de '
+            WHEN p_tipo_deuda = 'YO_DEBO'  AND p_parcial     THEN 'Pago parcial de deuda a '
+            ELSE                                                  'Pago de deuda a '
         END || p_persona_nombre || ' (' || p_descripcion_deuda || ')',
         120
     );

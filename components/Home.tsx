@@ -28,7 +28,10 @@ import { AjustesModal } from "@/components/AjustesModal";
 import { MobileShell, SWIPE_EASE } from "@/components/MobileShell";
 import { periodoActual, sumarMeses, formatPeriodoLabel } from "@/lib/periodo";
 
-type ModalState = { mode: "closed" } | { mode: "new" } | { mode: "edit"; movimiento: Movimiento };
+type ModalState =
+  | { mode: "closed" }
+  | { mode: "new"; tipo: "movimiento" | "deuda" }
+  | { mode: "edit"; movimiento: Movimiento };
 
 const TAB_IDS = TABS.map((t) => t.id) as TabId[];
 
@@ -56,7 +59,6 @@ export function Home({
   const [loadingGastosFijos, setLoadingGastosFijos] = useState(true);
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
   const [categoriaModalAbierta, setCategoriaModalAbierta] = useState(false);
-  const [deudaModalAbierta, setDeudaModalAbierta] = useState(false);
   const [gastoFijoModalAbierto, setGastoFijoModalAbierto] = useState(false);
   const [ajustesModalAbierto, setAjustesModalAbierto] = useState(false);
   const [personaDetalleId, setPersonaDetalleId] = useState<number | null>(null);
@@ -266,7 +268,7 @@ export function Home({
     resumen: undefined,
     movimientos: "Movimientos",
     graficos: "Gráficos",
-    personas: "Personas",
+    personas: "Deudas",
     fijos: "Gastos fijos",
   };
 
@@ -293,13 +295,12 @@ export function Home({
   );
 
   const abrirNuevo = () => {
-    if (tab === "personas") setDeudaModalAbierta(true);
-    else if (tab === "fijos") setGastoFijoModalAbierto(true);
-    else setModal({ mode: "new" });
+    if (tab === "fijos") { setGastoFijoModalAbierto(true); return; }
+    setModal({ mode: "new", tipo: tab === "personas" ? "deuda" : "movimiento" });
   };
 
   const modalAbierto =
-    modal.mode !== "closed" || categoriaModalAbierta || deudaModalAbierta ||
+    modal.mode !== "closed" || categoriaModalAbierta ||
     gastoFijoModalAbierto || ajustesModalAbierto || personaDetalleId !== null;
 
   return (
@@ -318,11 +319,12 @@ export function Home({
           <div className="lg:hidden">
             <MobileShell
               header={
-                <>
-                  <Header title={titles[tab]} themeName={themeName} usuario={usuario} onToggleModo={handleToggleModo} onOpenAjustes={() => setAjustesModalAbierto(true)} />
-                  {mesSwitcher}
-                </>
+                <Header title={titles[tab]} themeName={themeName} usuario={usuario} onToggleModo={handleToggleModo} onOpenAjustes={() => setAjustesModalAbierto(true)} />
               }
+              monthSwitcher={
+                <MonthSwitcher label={periodoLabel} onAnterior={irMesAnterior} onSiguiente={irMesSiguiente} esMesActual={esMesActual} />
+              }
+              hasMonth={TAB_IDS.map((id) => TABS_CON_MES.includes(id))}
               index={TAB_IDS.indexOf(tab)}
               onIndexChange={(i) => setTab(TAB_IDS[i])}
               disabled={modalAbierto}
@@ -344,13 +346,18 @@ export function Home({
         <Plus size={19} />
       </button>
 
-      {modal.mode !== "closed" && (
+      {(modal.mode === "edit" || (modal.mode === "new" && modal.tipo === "movimiento")) && (
         <MovimientoModal
           movimiento={modal.mode === "edit" ? modal.movimiento : null}
           cotizacion={cotizacion}
           onClose={() => setModal({ mode: "closed" })}
           onSaved={alGuardarMovimiento}
           onCategoriaCreada={cargarCategorias}
+          tipoSelector={
+            modal.mode === "new"
+              ? { actual: "movimiento", onCambiar: (tipo) => setModal({ mode: "new", tipo }) }
+              : undefined
+          }
         />
       )}
 
@@ -358,8 +365,12 @@ export function Home({
         <CategoriaModal onClose={() => setCategoriaModalAbierta(false)} onCreated={cargarCategorias} />
       )}
 
-      {deudaModalAbierta && (
-        <DeudaModal onClose={() => setDeudaModalAbierta(false)} onSaved={cargarPersonas} />
+      {modal.mode === "new" && modal.tipo === "deuda" && (
+        <DeudaModal
+          onClose={() => setModal({ mode: "closed" })}
+          onSaved={cargarPersonas}
+          tipoSelector={{ actual: "deuda", onCambiar: (tipo) => setModal({ mode: "new", tipo }) }}
+        />
       )}
 
       {gastoFijoModalAbierto && (
