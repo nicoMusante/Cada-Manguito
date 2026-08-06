@@ -1,11 +1,9 @@
-export type DolarTipo = "oficial" | "blue" | "bolsa" | "contadoconliqui" | "mayorista" | "cripto" | "tarjeta";
+export type DolarTipo = "oficial" | "blue" | "bolsa" | "cripto" | "tarjeta";
 
 export const DOLAR_LABELS: Record<DolarTipo, string> = {
   oficial: "Oficial",
   blue: "Blue",
   bolsa: "Bolsa (MEP)",
-  contadoconliqui: "Contado con liqui",
-  mayorista: "Mayorista",
   cripto: "Cripto",
   tarjeta: "Tarjeta",
 };

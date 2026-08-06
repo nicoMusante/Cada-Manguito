@@ -21,7 +21,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 
     const historial = await sql`
       SELECT
-        d.id, d.tipo, d.monto, d.descripcion, d.fecha, d.estado, d.saldado_en,
+        d.id, d.tipo, d.monto, d.descripcion, d.fecha, d.estado, d.saldado_en, d.movimiento_id,
         COALESCE(pg.pagado, 0) AS pagado,
         COALESCE(pg.pagos, '[]'::json) AS pagos
       FROM deudas d

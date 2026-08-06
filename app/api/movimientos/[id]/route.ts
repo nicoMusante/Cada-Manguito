@@ -16,7 +16,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     const body = await request.json();
-    const { categoria_id, descripcion, monto, fecha } = body;
+    const { categoria_id, descripcion, monto, fecha, moneda, monto_original } = body;
 
     if (!categoria_id || !descripcion || !monto) {
       return NextResponse.json(
@@ -26,7 +26,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     await sql`
-      SELECT actualizar_movimiento(${usuarioId}, ${id}, ${categoria_id}, ${descripcion}, ${monto}, ${fecha ?? null})
+      SELECT actualizar_movimiento(
+        ${usuarioId}, ${id}, ${categoria_id}, ${descripcion}, ${monto}, ${fecha ?? null},
+        ${moneda ?? "ARS"}, ${monto_original ?? null}
+      )
     `;
 
     return NextResponse.json({ ok: true });

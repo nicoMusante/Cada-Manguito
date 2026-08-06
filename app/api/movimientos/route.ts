@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     }
 
     const rows = await sql`
-      SELECT id, categoria_id, descripcion, categoria, tipo, color_hex, icono, monto, fecha
+      SELECT id, categoria_id, descripcion, categoria, tipo, color_hex, icono, monto, moneda, monto_original, fecha
       FROM v_movimientos
       WHERE usuario_id = ${usuarioId} AND periodo = ${periodo}
       ORDER BY fecha DESC, id DESC
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     if (!usuarioId) return noAutenticado();
 
     const body = await request.json();
-    const { categoria_id, descripcion, monto, fecha, compartir } = body;
+    const { categoria_id, descripcion, monto, fecha, compartir, moneda, monto_original } = body;
 
     if (!categoria_id || !descripcion || !monto) {
       return NextResponse.json(
@@ -53,7 +53,10 @@ export async function POST(request: Request) {
     }
 
     const rows = await sql`
-      SELECT insertar_movimiento(${usuarioId}, ${categoria_id}, ${descripcion}, ${monto}, ${fecha ?? null}) AS id
+      SELECT insertar_movimiento(
+        ${usuarioId}, ${categoria_id}, ${descripcion}, ${monto}, ${fecha ?? null},
+        ${moneda ?? "ARS"}, ${monto_original ?? null}
+      ) AS id
     `;
     const movimientoId = rows[0].id;
 

@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Check, Trash2, Square, CheckSquare, ChevronDown, ChevronUp, Plus } from "lucide-react";
+import { X, Check, Trash2, Pencil, Square, CheckSquare, ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { parseFechaLocal } from "@/lib/periodo";
+import { formatMontoInput, parseMontoInput } from "@/lib/formatMonto";
+import { DeudaModal, type DeudaEditable } from "@/components/DeudaModal";
 
 type Pago = { id: number; monto: string; fecha: string };
 
@@ -15,6 +17,7 @@ type DeudaHistorial = {
   fecha: string;
   estado: "pendiente" | "saldado";
   saldado_en: string | null;
+  movimiento_id: number | null;
   pagado: string;
   pagos: Pago[];
 };
@@ -41,6 +44,7 @@ export function PersonaDetalleModal({
   const [montoPago, setMontoPago] = useState("");
   const [enviandoPago, setEnviandoPago] = useState(false);
   const [errorPago, setErrorPago] = useState<string | null>(null);
+  const [editando, setEditando] = useState<DeudaEditable | null>(null);
 
   async function refrescar() {
     const data = await fetch(`/api/personas/${personaId}`).then((r) => r.json());
@@ -131,7 +135,7 @@ export function PersonaDetalleModal({
 
   async function handleAgregarPago(deudaId: number) {
     setErrorPago(null);
-    const montoNum = Number(montoPago);
+    const montoNum = Number(parseMontoInput(montoPago));
     if (!montoNum || montoNum <= 0) return setErrorPago("El monto tiene que ser mayor a 0.");
 
     setEnviandoPago(true);
@@ -172,6 +176,7 @@ export function PersonaDetalleModal({
     .reduce((acc, h) => acc + (Number(h.monto) - Number(h.pagado)), 0);
 
   return (
+    <>
     <div
       className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/45"
       onClick={onClose}
@@ -265,6 +270,24 @@ export function PersonaDetalleModal({
                       <p className={`text-[12.5px] font-semibold ${h.estado === "saldado" ? "text-muted-foreground" : accentClass}`}>
                         {h.tipo === "ME_DEBEN" ? "+" : "-"}{fmt(h.estado === "pendiente" ? saldoPendiente : Number(h.monto))}
                       </p>
+                      {h.estado === "pendiente" && h.pagos.length === 0 && h.movimiento_id == null && (
+                        <button
+                          onClick={() =>
+                            setEditando({
+                              id: h.id,
+                              tipo: h.tipo,
+                              personaNombre: nombre,
+                              descripcion: h.descripcion,
+                              monto: Number(h.monto),
+                              fecha: h.fecha,
+                            })
+                          }
+                          className="shrink-0"
+                          aria-label="Editar"
+                        >
+                          <Pencil size={13} className="text-muted-foreground" />
+                        </button>
+                      )}
                       <button onClick={() => handleDeleteEntry(h.id)} className="shrink-0" aria-label="Eliminar">
                         <Trash2 size={13} className="text-muted-foreground" />
                       </button>
@@ -291,7 +314,7 @@ export function PersonaDetalleModal({
                           <div className="flex items-center gap-2">
                             <input
                               value={montoPago}
-                              onChange={(e) => setMontoPago(e.target.value.replace(/[^0-9.]/g, ""))}
+                              onChange={(e) => setMontoPago(formatMontoInput(e.target.value, false))}
                               placeholder={`Saldo: ${fmt(saldoPendiente)}`}
                               inputMode="decimal"
                               className="flex-1 rounded-xl px-3 py-2 text-[13px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
@@ -364,5 +387,16 @@ export function PersonaDetalleModal({
         )}
       </div>
     </div>
+    {editando && (
+      <DeudaModal
+        deuda={editando}
+        onClose={() => setEditando(null)}
+        onSaved={() => {
+          onChanged();
+          refrescar();
+        }}
+      />
+    )}
+    </>
   );
 }

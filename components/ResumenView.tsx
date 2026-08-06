@@ -68,7 +68,7 @@ export function ResumenView({
   const movimientosAMostrar = hayFiltro ? movimientosFiltrados : movimientosFiltrados.slice(0, 5);
 
   // los totales de arriba reflejan el filtro de categorías, no solo la lista de abajo
-  const { ingresos, gastos } = computeTotals(movimientosFiltrados);
+  const { ingresos, gastos } = computeTotals(movimientosFiltrados, cotizacion ?? null);
 
   return (
     <div className="pb-4 lg:pb-0">
@@ -92,21 +92,21 @@ export function ResumenView({
 
       <div
         data-swipe-ignore
-        className="mt-5 flex gap-2 overflow-x-auto overscroll-x-contain no-scrollbar px-5 lg:px-0 lg:flex-wrap lg:order-3 lg:col-span-6 lg:mt-4"
+        className="mt-5 flex gap-2 overflow-x-auto overscroll-x-contain no-scrollbar px-5 lg:px-0 lg:flex-wrap lg:order-3 lg:col-span-6 lg:mt-4 py-1"
       >
         {(categoriasExpandidas ? categorias : categorias.slice(0, CAP_CATEGORIAS)).map((c) => {
           const seleccionada = categoriasFiltro.has(c.id);
           const confirmando = confirmarEliminarId === c.id;
           return (
-            <div
-              key={c.id}
-              className="chip-etiqueta shrink-0 flex items-center gap-1.5 pr-2 py-2 text-white transition"
-              style={{
-                backgroundColor: confirmando ? "hsl(var(--expense))" : c.color,
-                opacity: hayFiltro && !seleccionada && !confirmando ? 0.45 : 1,
-                boxShadow: seleccionada && !confirmando ? "0 0 0 2px rgba(255,255,255,0.85) inset" : "none",
-              }}
-            >
+            <div key={c.id} className="relative shrink-0">
+              {seleccionada && !confirmando && <div className="chip-etiqueta-ring" aria-hidden />}
+              <div
+                className="chip-etiqueta relative flex items-center gap-1.5 pr-2 py-2 text-white transition"
+                style={{
+                  backgroundColor: confirmando ? "hsl(var(--expense))" : c.color,
+                  opacity: hayFiltro && !seleccionada && !confirmando ? 0.45 : 1,
+                }}
+              >
               <span className="chip-etiqueta-agujero" />
               <button
                 type="button"
@@ -151,6 +151,7 @@ export function ResumenView({
                   <X size={9} />
                 </button>
               )}
+              </div>
             </div>
           );
         })}

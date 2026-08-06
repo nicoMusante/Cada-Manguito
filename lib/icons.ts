@@ -1,12 +1,13 @@
 import {
   Dumbbell, Home as HomeIcon, Zap, Coffee, ShoppingBag, Wallet,
   Car, Heart, Plane, Gift, Book, Film, Smartphone, PawPrint,
-  GraduationCap, Utensils, Bus, Music, Shirt, Gamepad2,
+  GraduationCap, Utensils, Bus, Music, Shirt, Gamepad2, HandCoins,
   type LucideIcon,
 } from "lucide-react";
 
 export const ICONS: Record<string, LucideIcon> = {
   dumbbell: Dumbbell,
+  "hand-coins": HandCoins,
   home: HomeIcon,
   zap: Zap,
   coffee: Coffee,

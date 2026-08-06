@@ -572,9 +572,23 @@ input, textarea, [contenteditable="true"] {
    la píldora lisa */
 .chip-etiqueta {
   position: relative;
+  z-index: 1;
   clip-path: polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 50%);
   padding-left: 20px;
   border-radius: 4px;
+}
+/* contorno de selección: un halo detrás del chip con el mismo clip-path,
+   escalado — como el clip-path usa unidades fijas en px, el transform: scale
+   agranda la silueta entera proporcionalmente, así el halo sigue la forma de
+   etiqueta (con la muesca) en vez de quedar como un rectángulo */
+.chip-etiqueta-ring {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 50%);
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 4px;
+  transform: scale(1.08);
 }
 .chip-etiqueta-agujero {
   position: absolute;

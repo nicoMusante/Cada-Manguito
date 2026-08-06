@@ -331,6 +331,7 @@ export function Home({
       {modal.mode !== "closed" && (
         <MovimientoModal
           movimiento={modal.mode === "edit" ? modal.movimiento : null}
+          cotizacion={cotizacion}
           onClose={() => setModal({ mode: "closed" })}
           onSaved={alGuardarMovimiento}
           onCategoriaCreada={cargarCategorias}
