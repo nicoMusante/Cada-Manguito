@@ -16,18 +16,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     const body = await request.json();
-    const { categoria_id, descripcion, monto, fecha, moneda, monto_original } = body;
+    const { categoria_id, descripcion, monto, tipo, fecha, moneda, monto_original } = body;
 
-    if (!categoria_id || !descripcion || !monto) {
-      return NextResponse.json(
-        { error: "Faltan campos requeridos: categoria_id, descripcion, monto" },
-        { status: 400 }
-      );
+    if (!monto || !tipo) {
+      return NextResponse.json({ error: "Faltan campos requeridos: monto, tipo" }, { status: 400 });
+    }
+    if (tipo !== "GASTO" && tipo !== "INGRESO") {
+      return NextResponse.json({ error: "tipo debe ser GASTO o INGRESO" }, { status: 400 });
+    }
+    if (!categoria_id && !descripcion?.trim()) {
+      return NextResponse.json({ error: "El movimiento necesita categoría o descripción" }, { status: 400 });
     }
 
     await sql`
       SELECT actualizar_movimiento(
-        ${usuarioId}, ${id}, ${categoria_id}, ${descripcion}, ${monto}, ${fecha ?? null},
+        ${usuarioId}, ${id}, ${categoria_id ?? null}, ${descripcion?.trim() || null}, ${monto}, ${tipo}, ${fecha ?? null},
         ${moneda ?? "ARS"}, ${monto_original ?? null}
       )
     `;

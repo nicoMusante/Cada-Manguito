@@ -146,9 +146,9 @@ export function MovimientoModal({
     setError(null);
 
     const montoNum = Number(parseMontoInput(monto));
-    if (!categoriaId) return setError("Elegí una categoría.");
-    if (!descripcion.trim()) return setError("Agregá una descripción.");
+    if (!categoriaId && !descripcion.trim()) return setError("Agregá una categoría o una descripción.");
     if (!montoNum || montoNum <= 0) return setError("El monto tiene que ser mayor a 0.");
+    if (!esEdicion && tipo === "GASTO" && compartir && !descripcion.trim()) return setError("Para compartir el gasto agregá una descripción.");
     if (!esEdicion && tipo === "GASTO" && compartir && errorCompartir) return setError(errorCompartir);
     if (moneda === "USD" && !cotizacion?.venta) return setError("No se pudo obtener la cotización. Probá de nuevo en un momento.");
 
@@ -164,8 +164,9 @@ export function MovimientoModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           categoria_id: categoriaId,
-          descripcion: descripcion.trim(),
+          descripcion: descripcion.trim() || null,
           monto: montoArs,
+          tipo,
           moneda,
           monto_original: moneda === "USD" ? montoNum : null,
           fecha,

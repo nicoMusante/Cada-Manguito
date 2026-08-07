@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { MoreVertical } from "lucide-react";
-import { type Movimiento, fmt, montoEfectivoArs } from "@/lib/mockData";
+import { type Movimiento, fmt, montoEfectivoArs, SIN_CATEGORIA } from "@/lib/mockData";
 import { formatUSD, type Cotizacion } from "@/lib/dolar";
 
 const LONG_PRESS_MS = 220;
@@ -62,8 +62,10 @@ export function MovimientoItem({
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium truncate text-foreground">{m.desc}</p>
-        <p className="text-[10.5px] text-muted-foreground">{subtitle}</p>
+        <p className={`text-[13px] font-medium truncate ${m.desc ? "text-foreground" : "italic text-muted-foreground"}`}>
+          {m.desc || "Sin descripción"}
+        </p>
+        <p className={`text-[10.5px] text-muted-foreground ${subtitle === SIN_CATEGORIA ? "italic" : ""}`}>{subtitle}</p>
       </div>
 
       <div className="text-right shrink-0">

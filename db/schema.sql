@@ -69,9 +69,18 @@ CREATE TABLE IF NOT EXISTS gastos_fijos (
 CREATE TABLE IF NOT EXISTS movimientos (
     id             INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     usuario_id     INTEGER       NOT NULL REFERENCES usuarios(id),
-    categoria_id   INTEGER       NOT NULL REFERENCES categorias(id),
-    descripcion    VARCHAR(120)  NOT NULL,
-    monto          NUMERIC(14,2) NOT NULL,       -- nunca negativo; el signo lo da categorias.tipo
+    -- nullable: si se elimina la categoría, sus movimientos históricos quedan
+    -- "sin categoría" en vez de seguir mostrando el nombre viejo (ver
+    -- eliminar_categoria). También puede cargarse así desde el vamos.
+    categoria_id   INTEGER       REFERENCES categorias(id),
+    -- nullable: un movimiento puede no tener descripción si tiene categoría
+    -- (ver chk_movimiento_cat_o_desc, siempre tiene que haber al menos una)
+    descripcion    VARCHAR(120),
+    monto          NUMERIC(14,2) NOT NULL,       -- nunca negativo; el signo lo da "tipo"
+    -- antes se inferia de categorias.tipo vía JOIN; ahora es propia del
+    -- movimiento para poder existir sin categoría (la UI igual elige el tipo
+    -- antes que la categoría, esto sólo formaliza eso)
+    tipo           VARCHAR(10)   NOT NULL,
     fecha          DATE          NOT NULL DEFAULT hoy_ar(),
     creado_en      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     gasto_fijo_id  INTEGER       REFERENCES gastos_fijos(id),  -- si no es null, este movimiento lo generó un gasto fijo
@@ -87,7 +96,9 @@ CREATE TABLE IF NOT EXISTS movimientos (
     -- pagar_movimiento/saldar_persona/saldar_deudas/eliminar_deuda, que
     -- descuentan de acá la parte ya cobrada de la deuda vinculada)
     CONSTRAINT chk_monto_positivo CHECK (monto >= 0),
-    CONSTRAINT chk_movimiento_moneda CHECK (moneda IN ('ARS', 'USD'))
+    CONSTRAINT chk_movimiento_moneda CHECK (moneda IN ('ARS', 'USD')),
+    CONSTRAINT chk_movimiento_tipo CHECK (tipo IN ('INGRESO', 'GASTO')),
+    CONSTRAINT chk_movimiento_cat_o_desc CHECK (categoria_id IS NOT NULL OR (descripcion IS NOT NULL AND TRIM(descripcion) <> ''))
 );
 CREATE INDEX IF NOT EXISTS ix_movimientos_fecha      ON movimientos (fecha);
 CREATE INDEX IF NOT EXISTS ix_movimientos_cat_fecha  ON movimientos (categoria_id, fecha);
@@ -146,10 +157,10 @@ SELECT
     m.id,
     m.descripcion,
     c.nombre                                                   AS categoria,
-    c.tipo,
+    m.tipo,
     c.color_hex,
     c.icono,
-    CASE WHEN c.tipo = 'GASTO' THEN -m.monto ELSE m.monto END   AS monto_con_signo,
+    CASE WHEN m.tipo = 'GASTO' THEN -m.monto ELSE m.monto END   AS monto_con_signo,
     m.monto,
     m.fecha,
     DATE_TRUNC('month', m.fecha)::date                         AS mes,
@@ -159,7 +170,7 @@ SELECT
     m.moneda,
     m.monto_original
 FROM movimientos m
-JOIN categorias c ON c.id = m.categoria_id;
+LEFT JOIN categorias c ON c.id = m.categoria_id;
 
 -- Personas con deuda pendiente: neto ya calculado + el detalle del último
 -- pendiente (para el subtítulo de cada tarjeta en la pantalla de Personas).
@@ -237,14 +248,55 @@ CREATE TRIGGER trg_reciclar_id_usuario
 
 -- ========================= FUNCIONES: CATEGORIAS =========================
 
--- Baja lógica: no se borra la fila (los movimientos históricos siguen
--- necesitando su categoria_id), sólo deja de listarse como activa.
+-- Baja lógica: no se borra la fila (el nombre queda "tomado" por la unique
+-- constraint, ver crear_categoria para poder recrearla). Los movimientos que
+-- ya estaban en esta categoría pasan a quedar sin categoría de inmediato, en
+-- vez de seguir mostrando el nombre viejo — si más adelante se crea una
+-- categoría nueva con el mismo nombre, es una categoría vacía, no se
+-- reconecta sola con estos movimientos.
 CREATE OR REPLACE FUNCTION eliminar_categoria(p_usuario_id INTEGER, p_id INTEGER) RETURNS VOID AS $$
 BEGIN
     UPDATE categorias SET activo = false WHERE id = p_id AND usuario_id = p_usuario_id;
     IF NOT FOUND THEN
         RAISE EXCEPTION 'La categoría indicada no existe.';
     END IF;
+
+    UPDATE movimientos SET categoria_id = NULL
+    WHERE categoria_id = p_id AND usuario_id = p_usuario_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Crea una categoría nueva. Como el borrado es lógico, el nombre puede seguir
+-- "ocupado" por una categoría inactiva (uq_categoria_nombre_usuario no
+-- distingue activo) — en ese caso la reactiva con los datos nuevos en vez de
+-- fallar, para poder recuperar una categoría borrada por error sin más
+-- trámite. Si el nombre lo tiene una categoría todavía activa, sí es un
+-- duplicado real y falla.
+CREATE OR REPLACE FUNCTION crear_categoria(
+    p_usuario_id  INTEGER,
+    p_nombre      VARCHAR,
+    p_tipo        VARCHAR,
+    p_color_hex   VARCHAR,
+    p_icono       VARCHAR
+) RETURNS INTEGER AS $$
+DECLARE
+    v_id     INTEGER;
+    v_activo BOOLEAN;
+BEGIN
+    SELECT id, activo INTO v_id, v_activo FROM categorias WHERE usuario_id = p_usuario_id AND nombre = TRIM(p_nombre);
+
+    IF v_id IS NULL THEN
+        INSERT INTO categorias (usuario_id, nombre, tipo, color_hex, icono)
+        VALUES (p_usuario_id, TRIM(p_nombre), p_tipo, p_color_hex, p_icono)
+        RETURNING id INTO v_id;
+    ELSIF v_activo THEN
+        RAISE EXCEPTION 'Ya existe una categoría con ese nombre.';
+    ELSE
+        UPDATE categorias SET tipo = p_tipo, color_hex = p_color_hex, icono = p_icono, activo = true
+        WHERE id = v_id;
+    END IF;
+
+    RETURN v_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -327,8 +379,8 @@ BEGIN
               AND TO_CHAR(fecha, 'YYYY-MM') = v_periodo
         ) THEN
             v_fecha := make_date(EXTRACT(YEAR FROM v_hoy)::int, EXTRACT(MONTH FROM v_hoy)::int, v_gf.dia_mes);
-            INSERT INTO movimientos (usuario_id, categoria_id, descripcion, monto, fecha, gasto_fijo_id)
-            VALUES (p_usuario_id, v_gf.categoria_id, v_gf.descripcion, v_gf.monto, v_fecha, v_gf.id);
+            INSERT INTO movimientos (usuario_id, categoria_id, descripcion, monto, tipo, fecha, gasto_fijo_id)
+            VALUES (p_usuario_id, v_gf.categoria_id, v_gf.descripcion, v_gf.monto, 'GASTO', v_fecha, v_gf.id);
             v_creados := v_creados + 1;
         END IF;
     END LOOP;
@@ -340,9 +392,10 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION insertar_movimiento(
     p_usuario_id      INTEGER,
-    p_categoria_id    INTEGER,
-    p_descripcion     VARCHAR,
+    p_categoria_id    INTEGER,     -- nullable: sin categoría, tiene que venir con descripción
+    p_descripcion     VARCHAR,     -- nullable: sin descripción, tiene que venir con categoría
     p_monto           NUMERIC,
+    p_tipo            VARCHAR,     -- 'INGRESO' o 'GASTO', ya no se infiere de la categoría
     p_fecha           DATE DEFAULT NULL,
     p_moneda          VARCHAR DEFAULT 'ARS',   -- monto ya viene convertido a ARS; esto es sólo para mostrar el original
     p_monto_original  NUMERIC DEFAULT NULL
@@ -351,16 +404,24 @@ DECLARE
     v_activo BOOLEAN;
     v_id     INTEGER;
 BEGIN
-    SELECT activo INTO v_activo FROM categorias WHERE id = p_categoria_id AND usuario_id = p_usuario_id;
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'La categoría indicada no existe.';
+    IF p_tipo NOT IN ('INGRESO', 'GASTO') THEN
+        RAISE EXCEPTION 'Tipo inválido.';
     END IF;
-    IF NOT v_activo THEN
-        RAISE EXCEPTION 'La categoría seleccionada está inactiva.';
+    IF p_categoria_id IS NULL AND (p_descripcion IS NULL OR TRIM(p_descripcion) = '') THEN
+        RAISE EXCEPTION 'El movimiento necesita categoría o descripción.';
+    END IF;
+    IF p_categoria_id IS NOT NULL THEN
+        SELECT activo INTO v_activo FROM categorias WHERE id = p_categoria_id AND usuario_id = p_usuario_id;
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'La categoría indicada no existe.';
+        END IF;
+        IF NOT v_activo THEN
+            RAISE EXCEPTION 'La categoría seleccionada está inactiva.';
+        END IF;
     END IF;
 
-    INSERT INTO movimientos (usuario_id, categoria_id, descripcion, monto, fecha, moneda, monto_original)
-    VALUES (p_usuario_id, p_categoria_id, p_descripcion, p_monto, COALESCE(p_fecha, hoy_ar()), COALESCE(p_moneda, 'ARS'), p_monto_original)
+    INSERT INTO movimientos (usuario_id, categoria_id, descripcion, monto, tipo, fecha, moneda, monto_original)
+    VALUES (p_usuario_id, p_categoria_id, NULLIF(TRIM(p_descripcion), ''), p_monto, p_tipo, COALESCE(p_fecha, hoy_ar()), COALESCE(p_moneda, 'ARS'), p_monto_original)
     RETURNING id INTO v_id;
 
     RETURN v_id;
@@ -373,6 +434,7 @@ CREATE OR REPLACE FUNCTION actualizar_movimiento(
     p_categoria_id    INTEGER,
     p_descripcion     VARCHAR,
     p_monto           NUMERIC,
+    p_tipo            VARCHAR,
     p_fecha           DATE DEFAULT NULL,
     p_moneda          VARCHAR DEFAULT 'ARS',
     p_monto_original  NUMERIC DEFAULT NULL
@@ -380,18 +442,27 @@ CREATE OR REPLACE FUNCTION actualizar_movimiento(
 DECLARE
     v_activo BOOLEAN;
 BEGIN
-    SELECT activo INTO v_activo FROM categorias WHERE id = p_categoria_id AND usuario_id = p_usuario_id;
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'La categoría indicada no existe.';
+    IF p_tipo NOT IN ('INGRESO', 'GASTO') THEN
+        RAISE EXCEPTION 'Tipo inválido.';
     END IF;
-    IF NOT v_activo THEN
-        RAISE EXCEPTION 'La categoría seleccionada está inactiva.';
+    IF p_categoria_id IS NULL AND (p_descripcion IS NULL OR TRIM(p_descripcion) = '') THEN
+        RAISE EXCEPTION 'El movimiento necesita categoría o descripción.';
+    END IF;
+    IF p_categoria_id IS NOT NULL THEN
+        SELECT activo INTO v_activo FROM categorias WHERE id = p_categoria_id AND usuario_id = p_usuario_id;
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'La categoría indicada no existe.';
+        END IF;
+        IF NOT v_activo THEN
+            RAISE EXCEPTION 'La categoría seleccionada está inactiva.';
+        END IF;
     END IF;
 
     UPDATE movimientos
     SET categoria_id    = p_categoria_id,
-        descripcion     = p_descripcion,
+        descripcion     = NULLIF(TRIM(p_descripcion), ''),
         monto           = p_monto,
+        tipo            = p_tipo,
         fecha           = COALESCE(p_fecha, fecha),
         moneda          = COALESCE(p_moneda, 'ARS'),
         monto_original  = p_monto_original
@@ -521,14 +592,14 @@ BEGIN
         CASE
             WHEN p_tipo_deuda = 'ME_DEBEN' AND p_parcial     THEN 'Cobro parcial de deuda a '
             WHEN p_tipo_deuda = 'ME_DEBEN' AND NOT p_parcial THEN 'Cobro de deuda a '
-            WHEN p_tipo_deuda = 'YO_DEBO'  AND p_parcial     THEN 'Pago parcial de deuda a '
-            ELSE                                                  'Pago de deuda a '
+            WHEN p_tipo_deuda = 'YO_DEBO'  AND p_parcial     THEN 'Pago parcial de deuda de '
+            ELSE                                                  'Pago de deuda de '
         END || p_persona_nombre || ' (' || p_descripcion_deuda || ')',
         120
     );
 
-    INSERT INTO movimientos (usuario_id, categoria_id, descripcion, monto)
-    VALUES (p_usuario_id, v_categoria_id, v_texto, p_monto);
+    INSERT INTO movimientos (usuario_id, categoria_id, descripcion, monto, tipo)
+    VALUES (p_usuario_id, v_categoria_id, v_texto, p_monto, v_tipo_mov);
 END;
 $$ LANGUAGE plpgsql;
 

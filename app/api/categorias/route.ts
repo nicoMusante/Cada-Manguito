@@ -45,18 +45,14 @@ export async function POST(request: Request) {
     }
 
     const rows = await sql`
-      INSERT INTO categorias (usuario_id, nombre, tipo, color_hex, icono)
-      VALUES (${usuarioId}, ${nombre.trim()}, ${tipo}, ${color_hex ?? null}, ${icono ?? null})
-      RETURNING id
+      SELECT crear_categoria(${usuarioId}, ${nombre.trim()}, ${tipo}, ${color_hex ?? null}, ${icono ?? null}) AS id
     `;
 
     return NextResponse.json({ id: rows[0].id }, { status: 201 });
-  } catch (error: any) {
-    if (error?.code === "23505") {
-      return NextResponse.json({ error: "Ya existe una categoría con ese nombre." }, { status: 409 });
-    }
+  } catch (error) {
     console.error("Error en POST /api/categorias:", error);
-    return NextResponse.json({ error: "No se pudo crear la categoría" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "No se pudo crear la categoría";
+    return NextResponse.json({ error: message.replace(/^.*ERROR:\s*/, "") }, { status: 400 });
   }
 }
 

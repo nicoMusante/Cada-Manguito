@@ -6,8 +6,9 @@ import {
   PieChart, Pie, Cell, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { SlidersHorizontal, X, Check, PieChart as PieChartIcon, ListOrdered, CalendarDays } from "lucide-react";
+import { SlidersHorizontal, X, PieChart as PieChartIcon, ListOrdered, CalendarDays } from "lucide-react";
 import { fmt, type Movimiento, type CategoriaConId } from "@/lib/mockData";
+import { CategoriaChipBar } from "@/components/CategoriaChipBar";
 import { Card, CardContent } from "@/components/ui/card";
 
 // tooltip propio para que los charts respeten el tema activo en vez del
@@ -36,6 +37,7 @@ export function GraficosView({
   const categoriasGasto = categorias.filter((c) => c.tipo === "GASTO");
 
   const [categoriasFiltro, setCategoriasFiltro] = useState<Set<number>>(new Set());
+  const [sinCategoria, setSinCategoria] = useState(false);
   const [montoMin, setMontoMin] = useState("");
   const [montoMax, setMontoMax] = useState("");
   const [fechaDesde, setFechaDesde] = useState("");
@@ -51,12 +53,14 @@ export function GraficosView({
     });
   }
 
-  const hayFiltro = categoriasFiltro.size > 0 || montoMin !== "" || montoMax !== "" || fechaDesde !== "" || fechaHasta !== "";
+  const hayFiltroCategoria = categoriasFiltro.size > 0 || sinCategoria;
+  const hayFiltro = hayFiltroCategoria || montoMin !== "" || montoMax !== "" || fechaDesde !== "" || fechaHasta !== "";
   const cantidadFiltrosActivos =
-    categoriasFiltro.size + (montoMin !== "" ? 1 : 0) + (montoMax !== "" ? 1 : 0) + (fechaDesde !== "" ? 1 : 0) + (fechaHasta !== "" ? 1 : 0);
+    categoriasFiltro.size + (sinCategoria ? 1 : 0) + (montoMin !== "" ? 1 : 0) + (montoMax !== "" ? 1 : 0) + (fechaDesde !== "" ? 1 : 0) + (fechaHasta !== "" ? 1 : 0);
 
   function limpiarFiltros() {
     setCategoriasFiltro(new Set());
+    setSinCategoria(false);
     setMontoMin("");
     setMontoMax("");
     setFechaDesde("");
@@ -66,7 +70,11 @@ export function GraficosView({
   const gastosFiltrados = useMemo(() => {
     return movimientos.filter((m) => {
       if (m.tipo !== "out") return false;
-      if (categoriasFiltro.size > 0 && !categoriasFiltro.has(m.categoriaId)) return false;
+      if (hayFiltroCategoria) {
+        const coincideCategoria = m.categoriaId != null && categoriasFiltro.has(m.categoriaId);
+        const coincideSinCategoria = sinCategoria && m.categoriaId == null;
+        if (!coincideCategoria && !coincideSinCategoria) return false;
+      }
       const montoAbs = Math.abs(m.monto);
       if (montoMin !== "" && montoAbs < Number(montoMin)) return false;
       if (montoMax !== "" && montoAbs > Number(montoMax)) return false;
@@ -75,12 +83,12 @@ export function GraficosView({
       if (fechaHasta && m.fechaISO.slice(0, 10) > fechaHasta) return false;
       return true;
     });
-  }, [movimientos, categoriasFiltro, montoMin, montoMax, fechaDesde, fechaHasta]);
+  }, [movimientos, hayFiltroCategoria, categoriasFiltro, sinCategoria, montoMin, montoMax, fechaDesde, fechaHasta]);
 
   const totalGastado = gastosFiltrados.reduce((acc, m) => acc + Math.abs(m.monto), 0);
 
   const porCategoria = useMemo(() => {
-    const map = new Map<number, { id: number; nombre: string; color: string; total: number }>();
+    const map = new Map<number | null, { id: number | null; nombre: string; color: string; total: number }>();
     for (const m of gastosFiltrados) {
       const cat = categorias.find((c) => c.id === m.categoriaId);
       const prev = map.get(m.categoriaId);
@@ -106,7 +114,7 @@ export function GraficosView({
   return (
     <div className="pb-4 lg:pb-0">
       {/* filtros: categoría, monto y fecha, agrupados en un panel */}
-      <div className="px-5 lg:px-0 mt-3 lg:mt-6">
+      <div className="px-5 lg:px-0 mt-3 lg:mt-6 flex justify-end">
         <button
           type="button"
           onClick={() => setFiltrosAbiertos(true)}
@@ -148,29 +156,18 @@ export function GraficosView({
               </div>
             </div>
 
-            {categoriasGasto.length > 0 && (
-              <div className="mb-4 rounded-2xl border border-border p-3">
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">Categorías</p>
-                <div className="space-y-1 max-h-[220px] overflow-y-auto">
-                  {categoriasGasto.map((c) => {
-                    const seleccionada = categoriasFiltro.has(c.id);
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => toggleCategoria(c.id)}
-                        aria-pressed={seleccionada}
-                        className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 bg-secondary"
-                      >
-                        <c.icon size={14} style={{ color: c.color }} />
-                        <span className="flex-1 text-left text-[13px] text-foreground">{c.name}</span>
-                        {seleccionada && <Check size={15} className="text-primary" />}
-                      </button>
-                    );
-                  })}
-                </div>
+            <div className="mb-4">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Categorías</p>
+              <div className="flex gap-2 flex-wrap max-h-[220px] overflow-y-auto pr-0.5">
+                <CategoriaChipBar
+                  categorias={categoriasGasto}
+                  seleccionadas={categoriasFiltro}
+                  sinCategoria={sinCategoria}
+                  onToggleCategoria={toggleCategoria}
+                  onToggleSinCategoria={() => setSinCategoria((v) => !v)}
+                />
               </div>
-            )}
+            </div>
 
             <div className="grid grid-cols-2 gap-2.5">
               <div>
@@ -249,7 +246,7 @@ export function GraficosView({
                         strokeWidth={3}
                       >
                         {porCategoria.map((c) => (
-                          <Cell key={c.id} fill={c.color} />
+                          <Cell key={String(c.id)} fill={c.color} />
                         ))}
                       </Pie>
                     </PieChart>
@@ -261,7 +258,7 @@ export function GraficosView({
                 </div>
                 <div className="mt-4 space-y-2">
                   {porCategoria.slice(0, 6).map((c) => (
-                    <div key={c.id} className="flex items-center justify-between text-[11.5px]">
+                    <div key={String(c.id)} className="flex items-center justify-between text-[11.5px]">
                       <span className="flex items-center gap-1.5 text-muted-foreground min-w-0 truncate">
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
                         <span className="truncate">{c.nombre}</span>
@@ -295,7 +292,7 @@ export function GraficosView({
                       <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted))" }} />
                       <Bar dataKey="total" radius={[0, 6, 6, 0]} maxBarSize={14}>
                         {porCategoria.map((c) => (
-                          <Cell key={c.id} fill={c.color} />
+                          <Cell key={String(c.id)} fill={c.color} />
                         ))}
                       </Bar>
                     </BarChart>

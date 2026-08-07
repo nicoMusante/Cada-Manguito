@@ -13,7 +13,7 @@ export function CategoriaSelector({
 }: {
   categorias: CategoriaConId[];
   categoriaId: number | null;
-  onSelect: (id: number) => void;
+  onSelect: (id: number | null) => void;
   onAgregarNueva: () => void;
 }) {
   const [expandido, setExpandido] = useState(false);
@@ -37,7 +37,7 @@ export function CategoriaSelector({
           <button
             type="button"
             key={c.id}
-            onClick={() => onSelect(c.id)}
+            onClick={() => onSelect(categoriaId === c.id ? null : c.id)}
             className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium border text-foreground"
             style={{
               borderColor: categoriaId === c.id ? c.color : "hsl(var(--border))",

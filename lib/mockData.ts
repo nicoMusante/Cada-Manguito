@@ -36,7 +36,7 @@ export const categories: Categoria[] = [
 
 export type Movimiento = {
   id: number;
-  categoriaId: number;
+  categoriaId: number | null;
   desc: string;
   cat: string;
   monto: number;
@@ -51,9 +51,9 @@ export type Movimiento = {
 // Forma en la que llegan las filas desde GET /api/movimientos (vista v_movimientos)
 export type MovimientoRow = {
   id: number;
-  categoria_id: number;
-  descripcion: string;
-  categoria: string;
+  categoria_id: number | null;
+  descripcion: string | null;
+  categoria: string | null;
   tipo: "INGRESO" | "GASTO";
   color_hex: string | null;
   icono: string | null;
@@ -63,13 +63,18 @@ export type MovimientoRow = {
   fecha: string; // fecha llega como string ISO
 };
 
+// nombre fijo que se muestra cuando un movimiento no tiene categoria_id —
+// se exporta para que los componentes puedan detectar este caso puntual
+// (por ejemplo, para darle un estilo distinto al de una categoría real)
+export const SIN_CATEGORIA = "Sin categoría";
+
 export function mapMovimiento(row: MovimientoRow): Movimiento {
   const monto = Number(row.monto);
   return {
     id: row.id,
     categoriaId: row.categoria_id,
-    desc: row.descripcion,
-    cat: row.categoria,
+    desc: row.descripcion ?? "",
+    cat: row.categoria ?? SIN_CATEGORIA,
     monto: row.tipo === "GASTO" ? -monto : monto,
     moneda: row.moneda,
     montoOriginal: row.monto_original !== null ? Number(row.monto_original) : null,

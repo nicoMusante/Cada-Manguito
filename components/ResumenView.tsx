@@ -1,19 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { TrendingDown, TrendingUp, Clock, Plus, X, Check, ChevronDown } from "lucide-react";
+import { useState } from "react";
+import { TrendingDown, TrendingUp, Clock } from "lucide-react";
 import { computeTotals, fmt, type Movimiento, type CategoriaConId } from "@/lib/mockData";
 import { formatUSD, type Cotizacion } from "@/lib/dolar";
 import { MovimientoItem } from "@/components/MovimientoItem";
+import { CategoriaChipBar } from "@/components/CategoriaChipBar";
 import { Card, CardContent } from "@/components/ui/card";
-
-// cuánto tiempo queda "armada" la confirmación de borrado antes de cancelarse
-// sola, para que un toque accidental en la x no deje el chip pidiendo
-// confirmación para siempre
-const MS_AUTOCANCELAR_BORRADO = 4000;
-
-// cantidad de categorías visibles antes de tener que desplegar el resto
-const CAP_CATEGORIAS = 7;
 
 export function ResumenView({
   movimientos, loading, categorias, meDeben, yoDebo, onSelectMovimiento, onAddCategoria, onEliminarCategoria,
@@ -30,16 +23,7 @@ export function ResumenView({
   cotizacion?: Cotizacion | null;
 }) {
   const [categoriasFiltro, setCategoriasFiltro] = useState<Set<number>>(new Set());
-  const [confirmarEliminarId, setConfirmarEliminarId] = useState<number | null>(null);
-  const [categoriasExpandidas, setCategoriasExpandidas] = useState(false);
-
-  // si no se confirma en unos segundos, se cancela sola — así un toque
-  // accidental en la x no deja el chip trabado pidiendo confirmación
-  useEffect(() => {
-    if (confirmarEliminarId === null) return;
-    const timer = setTimeout(() => setConfirmarEliminarId(null), MS_AUTOCANCELAR_BORRADO);
-    return () => clearTimeout(timer);
-  }, [confirmarEliminarId]);
+  const [sinCategoria, setSinCategoria] = useState(false);
 
   function toggleFiltroCategoria(id: number) {
     setCategoriasFiltro((prev) => {
@@ -50,9 +34,8 @@ export function ResumenView({
     });
   }
 
-  function confirmarEliminarCategoria(id: number) {
+  function handleEliminarCategoria(id: number) {
     onEliminarCategoria(id);
-    setConfirmarEliminarId(null);
     setCategoriasFiltro((prev) => {
       if (!prev.has(id)) return prev;
       const next = new Set(prev);
@@ -61,9 +44,9 @@ export function ResumenView({
     });
   }
 
-  const hayFiltro = categoriasFiltro.size > 0;
+  const hayFiltro = categoriasFiltro.size > 0 || sinCategoria;
   const movimientosFiltrados = hayFiltro
-    ? movimientos.filter((m) => categoriasFiltro.has(m.categoriaId))
+    ? movimientos.filter((m) => (m.categoriaId != null && categoriasFiltro.has(m.categoriaId)) || (sinCategoria && m.categoriaId == null))
     : movimientos;
   const movimientosAMostrar = hayFiltro ? movimientosFiltrados : movimientosFiltrados.slice(0, 5);
 
@@ -94,83 +77,15 @@ export function ResumenView({
         data-swipe-ignore
         className="mt-5 flex gap-2 overflow-x-auto overscroll-x-contain no-scrollbar px-5 lg:px-0 lg:flex-wrap lg:order-3 lg:col-span-6 lg:mt-4 py-1"
       >
-        {(categoriasExpandidas ? categorias : categorias.slice(0, CAP_CATEGORIAS)).map((c) => {
-          const seleccionada = categoriasFiltro.has(c.id);
-          const confirmando = confirmarEliminarId === c.id;
-          return (
-            <div key={c.id} className="relative shrink-0">
-              {seleccionada && !confirmando && <div className="chip-etiqueta-ring" aria-hidden />}
-              <div
-                className="chip-etiqueta relative flex items-center gap-1.5 pr-2 py-2 text-white transition"
-                style={{
-                  backgroundColor: confirmando ? "hsl(var(--expense))" : c.color,
-                  opacity: hayFiltro && !seleccionada && !confirmando ? 0.45 : 1,
-                }}
-              >
-              <span className="chip-etiqueta-agujero" />
-              <button
-                type="button"
-                onClick={() => toggleFiltroCategoria(c.id)}
-                disabled={confirmando}
-                aria-pressed={seleccionada}
-                aria-label={`Filtrar por ${c.name}`}
-                className="flex items-center gap-1.5"
-              >
-                <c.icon size={13} />
-                <span className="text-[11.5px]">{confirmando ? `¿Eliminar ${c.name}?` : c.name}</span>
-              </button>
-              {confirmando ? (
-                <span className="flex items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => confirmarEliminarCategoria(c.id)}
-                    className="w-4 h-4 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: "rgba(255,255,255,0.3)" }}
-                    aria-label={`Confirmar eliminar categoría ${c.name}`}
-                  >
-                    <Check size={9} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmarEliminarId(null)}
-                    className="w-4 h-4 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: "rgba(255,255,255,0.3)" }}
-                    aria-label="Cancelar"
-                  >
-                    <X size={9} />
-                  </button>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmarEliminarId(c.id)}
-                  className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: "rgba(255,255,255,0.25)" }}
-                  aria-label={`Eliminar categoría ${c.name}`}
-                >
-                  <X size={9} />
-                </button>
-              )}
-              </div>
-            </div>
-          );
-        })}
-        {categorias.length > CAP_CATEGORIAS && (
-          <button
-            onClick={() => setCategoriasExpandidas((v) => !v)}
-            className="shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 border border-dashed border-muted-foreground/50 text-muted-foreground"
-          >
-            <ChevronDown size={13} className={categoriasExpandidas ? "rotate-180" : ""} />
-            <span className="text-[11.5px]">{categoriasExpandidas ? "Ver menos" : "Ver más"}</span>
-          </button>
-        )}
-        <button
-          onClick={onAddCategoria}
-          className="shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 border border-dashed border-muted-foreground/50 text-muted-foreground"
-        >
-          <Plus size={13} />
-          <span className="text-[11.5px]">Categoría</span>
-        </button>
+        <CategoriaChipBar
+          categorias={categorias}
+          seleccionadas={categoriasFiltro}
+          sinCategoria={sinCategoria}
+          onToggleCategoria={toggleFiltroCategoria}
+          onToggleSinCategoria={() => setSinCategoria((v) => !v)}
+          onAddCategoria={onAddCategoria}
+          onEliminarCategoria={handleEliminarCategoria}
+        />
       </div>
 
       <div className="px-5 lg:px-0 mt-6 lg:mt-0 grid grid-cols-2 lg:grid-cols-2 gap-2.5 lg:gap-3 lg:order-2 lg:col-span-4">
@@ -222,7 +137,7 @@ export function ResumenView({
           {hayFiltro && (
             <button
               type="button"
-              onClick={() => setCategoriasFiltro(new Set())}
+              onClick={() => { setCategoriasFiltro(new Set()); setSinCategoria(false); }}
               className="text-[11px] font-medium text-muted-foreground"
             >
               Limpiar filtro

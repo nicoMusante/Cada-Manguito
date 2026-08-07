@@ -225,8 +225,11 @@ export function Home({
     <MovimientosView
       movimientos={movimientos}
       loading={loading}
+      categorias={categorias}
       onSelectMovimiento={abrirEdicion}
       cotizacion={cotizacion}
+      onAddCategoria={() => setCategoriaModalAbierta(true)}
+      onEliminarCategoria={handleEliminarCategoria}
     />
   );
   const graficosPanel = (
