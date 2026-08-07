@@ -55,6 +55,7 @@ export function Home({
   const [personasSaldadas, setPersonasSaldadas] = useState<DeudaSaldada[]>([]);
   const [gastosFijos, setGastosFijos] = useState<GastoFijo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingCategorias, setLoadingCategorias] = useState(true);
   const [loadingPersonas, setLoadingPersonas] = useState(true);
   const [loadingGastosFijos, setLoadingGastosFijos] = useState(true);
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
@@ -80,10 +81,12 @@ export function Home({
   }, [periodo]);
 
   const cargarCategorias = useCallback(() => {
+    setLoadingCategorias(true);
     return fetch("/api/categorias", { cache: "no-store" })
       .then((r) => r.json())
       .then((rows: CategoriaRow[]) => setCategorias(rows.map(mapCategoria)))
-      .catch((err) => console.error("Error al cargar categorías:", err));
+      .catch((err) => console.error("Error al cargar categorías:", err))
+      .finally(() => setLoadingCategorias(false));
   }, []);
 
   const cargarPersonas = useCallback(() => {
@@ -213,6 +216,7 @@ export function Home({
       movimientos={movimientos}
       loading={loading}
       categorias={categorias}
+      loadingCategorias={loadingCategorias}
       meDeben={meDeben}
       yoDebo={yoDebo}
       onSelectMovimiento={abrirEdicion}
@@ -226,6 +230,7 @@ export function Home({
       movimientos={movimientos}
       loading={loading}
       categorias={categorias}
+      loadingCategorias={loadingCategorias}
       onSelectMovimiento={abrirEdicion}
       cotizacion={cotizacion}
       onAddCategoria={() => setCategoriaModalAbierta(true)}
@@ -237,6 +242,7 @@ export function Home({
       movimientos={movimientos}
       loading={loading}
       categorias={categorias}
+      loadingCategorias={loadingCategorias}
     />
   );
   const personasPanel = (

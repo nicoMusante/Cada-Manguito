@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getUsuarioId, noAutenticado } from "@/lib/auth";
+import { demasiadasRequests, demasiadasPeticiones } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
   try {
     const usuarioId = await getUsuarioId();
     if (!usuarioId) return noAutenticado();
+    if (demasiadasRequests(`api:${usuarioId}`)) return demasiadasPeticiones();
 
     const body = await request.json();
     const { categoria_id, descripcion, monto, tipo, fecha, compartir, moneda, monto_original } = body;
@@ -53,6 +55,12 @@ export async function POST(request: Request) {
     }
     if (!categoria_id && !descripcion?.trim()) {
       return NextResponse.json({ error: "El movimiento necesita categoría o descripción" }, { status: 400 });
+    }
+    if (Array.isArray(compartir?.personas) && compartir.personas.length > 20) {
+      return NextResponse.json(
+        { error: "No se puede compartir un gasto con más de 20 personas a la vez." },
+        { status: 400 }
+      );
     }
 
     const rows = await sql`

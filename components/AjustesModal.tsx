@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, X, Palette, DollarSign, ChevronDown } from "lucide-react";
+import { Check, X, Palette, DollarSign, ChevronDown, Download } from "lucide-react";
 import { THEME_LABELS, THEME_SWATCHES, THEME_FAMILIES, THEME_MODE, type ThemeName } from "@/lib/theme";
 import { DOLAR_LABELS, type DolarTipo } from "@/lib/dolar";
 
@@ -30,7 +30,17 @@ function SeccionAjuste({
           <ChevronDown size={15} className={`transition-transform ${abierta ? "rotate-180" : ""}`} />
         </span>
       </button>
-      {abierta && <div className="space-y-1.5 px-3.5 pb-3.5">{children}</div>}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateRows: abierta ? "1fr" : "0fr",
+          transition: "grid-template-rows 0.25s ease",
+        }}
+      >
+        <div className="overflow-hidden">
+          <div className="space-y-1.5 px-3.5 pb-3.5">{children}</div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -53,11 +63,11 @@ export function AjustesModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/45"
+      className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/45 animate-in fade-in-0 duration-200"
       onClick={onClose}
     >
       <div
-        className="w-full lg:w-[420px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5 max-h-[85vh] overflow-y-auto bg-card"
+        className="w-full lg:w-[420px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5 max-h-[85vh] overflow-y-auto bg-card animate-in fade-in-0 slide-in-from-bottom-8 lg:slide-in-from-bottom-0 lg:zoom-in-95 duration-300 ease-out"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
@@ -122,6 +132,14 @@ export function AjustesModal({
               );
             })}
           </SeccionAjuste>
+
+          <a
+            href="/api/movimientos/export"
+            download
+            className="w-full flex items-center gap-1.5 rounded-2xl border border-border p-3.5 text-[13px] font-medium text-foreground"
+          >
+            <Download size={14} className="text-muted-foreground" /> Exportar movimientos (CSV)
+          </a>
         </div>
       </div>
     </div>

@@ -13,7 +13,7 @@ export const authConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const logueado = !!auth?.user;
-      const esPaginaPublica = nextUrl.pathname === "/login" || nextUrl.pathname === "/registro";
+      const esPaginaPublica = ["/login", "/registro", "/recuperar", "/resetear-password"].includes(nextUrl.pathname);
       if (esPaginaPublica) return true;
       return logueado;
     },

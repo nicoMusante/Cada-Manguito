@@ -31,7 +31,7 @@ export function CategoriaSelector({
       <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Categoría</label>
       <div
         ref={listaRef}
-        className={`flex gap-2 flex-wrap mt-2 overflow-hidden ${expandido ? "" : "max-h-[112px]"}`}
+        className={`flex gap-2 flex-wrap mt-2 overflow-hidden transition-[max-height] duration-300 ease-out ${expandido ? "max-h-[600px]" : "max-h-[112px]"}`}
       >
         {categorias.map((c) => (
           <button

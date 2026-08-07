@@ -10,6 +10,7 @@ import { SlidersHorizontal, X, PieChart as PieChartIcon, ListOrdered, CalendarDa
 import { fmt, type Movimiento, type CategoriaConId } from "@/lib/mockData";
 import { CategoriaChipBar } from "@/components/CategoriaChipBar";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // tooltip propio para que los charts respeten el tema activo en vez del
 // fondo blanco que trae recharts por default
@@ -28,11 +29,12 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 }
 
 export function GraficosView({
-  movimientos, loading, categorias,
+  movimientos, loading, categorias, loadingCategorias,
 }: {
   movimientos: Movimiento[];
   loading: boolean;
   categorias: CategoriaConId[];
+  loadingCategorias?: boolean;
 }) {
   const categoriasGasto = categorias.filter((c) => c.tipo === "GASTO");
 
@@ -132,11 +134,11 @@ export function GraficosView({
 
       {filtrosAbiertos && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/45"
+          className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/45 animate-in fade-in-0 duration-200"
           onClick={() => setFiltrosAbiertos(false)}
         >
           <div
-            className="w-full lg:w-[380px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5 max-h-[85vh] overflow-y-auto bg-card"
+            className="w-full lg:w-[380px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5 max-h-[85vh] overflow-y-auto bg-card animate-in fade-in-0 slide-in-from-bottom-8 lg:slide-in-from-bottom-0 lg:zoom-in-95 duration-300 ease-out"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -165,6 +167,7 @@ export function GraficosView({
                   sinCategoria={sinCategoria}
                   onToggleCategoria={toggleCategoria}
                   onToggleSinCategoria={() => setSinCategoria((v) => !v)}
+                  loading={loadingCategorias}
                 />
               </div>
             </div>
@@ -221,11 +224,15 @@ export function GraficosView({
       {/* charts */}
       <div className="px-5 lg:px-0 mt-4">
         {loading ? (
-          <p className="text-[12.5px] text-muted-foreground">Cargando movimientos...</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Skeleton className="h-[254px] lg:h-[294px] rounded-xl" />
+            <Skeleton className="h-[254px] lg:h-[294px] rounded-xl" />
+            <Skeleton className="h-[254px] lg:h-[284px] rounded-xl lg:col-span-2" />
+          </div>
         ) : !hayDatos ? (
           <p className="text-[12.5px] text-muted-foreground">No hay gastos que coincidan con estos filtros.</p>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-in fade-in-0 duration-300">
             <Card className="border-none shadow-sm bg-secondary">
               <CardContent className="p-4 lg:p-5">
                 <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground mb-4">

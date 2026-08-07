@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getUsuarioId, noAutenticado } from "@/lib/auth";
+import { demasiadasRequests, demasiadasPeticiones } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   try {
     const usuarioId = await getUsuarioId();
     if (!usuarioId) return noAutenticado();
+    if (demasiadasRequests(`api:${usuarioId}`)) return demasiadasPeticiones();
 
     const id = Number(params.id);
     if (!id) {
@@ -47,6 +49,7 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
   try {
     const usuarioId = await getUsuarioId();
     if (!usuarioId) return noAutenticado();
+    if (demasiadasRequests(`api:${usuarioId}`)) return demasiadasPeticiones();
 
     const id = Number(params.id);
     if (!id) {

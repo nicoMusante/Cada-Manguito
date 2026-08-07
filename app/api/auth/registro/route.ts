@@ -1,23 +1,39 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
+import { demasiadosIntentos, registrarIntentoFallido } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
+
+// identifico por ip para frenar alta masiva de cuentas, no por mail (que acá siempre es nuevo)
+function ipDelRequest(request: Request): string {
+  return request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "desconocida";
+}
 
 // POST /api/auth/registro → alta de cuenta nueva con mail y contraseña
 export async function POST(request: Request) {
   try {
+    const ip = ipDelRequest(request);
+    if (await demasiadosIntentos(`registro:${ip}`)) {
+      return NextResponse.json(
+        { error: "Demasiadas cuentas creadas desde acá. Esperá unos minutos y volvé a intentar." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { nombre, email, password } = body;
 
     if (!nombre?.trim() || !email?.trim() || !password) {
+      await registrarIntentoFallido(`registro:${ip}`);
       return NextResponse.json(
         { error: "Faltan campos requeridos: nombre, email, password" },
         { status: 400 }
       );
     }
-    if (password.length < 6) {
-      return NextResponse.json({ error: "La contraseña tiene que tener al menos 6 caracteres." }, { status: 400 });
+    if (password.length < 8) {
+      await registrarIntentoFallido(`registro:${ip}`);
+      return NextResponse.json({ error: "La contraseña tiene que tener al menos 8 caracteres." }, { status: 400 });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);

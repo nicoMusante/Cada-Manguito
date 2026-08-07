@@ -22,7 +22,11 @@ export default function LoginPage() {
     setEnviando(false);
 
     if (res?.error) {
-      setError("Mail o contraseña incorrectos.");
+      setError(
+        res.code === "rate_limited"
+          ? "Demasiados intentos fallidos. Esperá unos minutos y volvé a intentar."
+          : "Mail o contraseña incorrectos."
+      );
       return;
     }
     router.push("/");
@@ -74,7 +78,13 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <p className="text-[12.5px] text-center mt-5 text-muted-foreground">
+        <p className="text-[12.5px] text-center mt-4 text-muted-foreground">
+          <Link href="/recuperar" className="font-medium text-foreground">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </p>
+
+        <p className="text-[12.5px] text-center mt-2 text-muted-foreground">
           ¿No tenés cuenta?{" "}
           <Link href="/registro" className="font-medium text-foreground">
             Registrate

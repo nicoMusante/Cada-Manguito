@@ -3,16 +3,17 @@
 import { useState } from "react";
 import { type Movimiento, type CategoriaConId } from "@/lib/mockData";
 import type { Cotizacion } from "@/lib/dolar";
-import { MovimientoItem } from "@/components/MovimientoItem";
+import { MovimientoItem, MovimientoItemSkeleton } from "@/components/MovimientoItem";
 import { CategoriaChipBar } from "@/components/CategoriaChipBar";
 import { Card, CardContent } from "@/components/ui/card";
 
 export function MovimientosView({
-  movimientos, loading, categorias, onSelectMovimiento, cotizacion, onAddCategoria, onEliminarCategoria,
+  movimientos, loading, categorias, loadingCategorias, onSelectMovimiento, cotizacion, onAddCategoria, onEliminarCategoria,
 }: {
   movimientos: Movimiento[];
   loading: boolean;
   categorias: CategoriaConId[];
+  loadingCategorias?: boolean;
   onSelectMovimiento: (m: Movimiento) => void;
   cotizacion?: Cotizacion | null;
   onAddCategoria: () => void;
@@ -125,6 +126,7 @@ export function MovimientosView({
           onToggleSinCategoria={() => setSinCategoria((v) => !v)}
           onAddCategoria={onAddCategoria}
           onEliminarCategoria={handleEliminarCategoria}
+          loading={loadingCategorias}
         />
       </div>
 
@@ -144,13 +146,23 @@ export function MovimientosView({
       </div>
 
       {loading ? (
-        <p className="px-5 lg:px-0 mt-4 text-[12.5px] text-muted-foreground">Cargando...</p>
+        <div className="px-5 lg:px-0 mt-4 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3 lg:items-start">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Card key={i} className="border-none shadow-sm bg-secondary overflow-hidden">
+              <CardContent className="px-3.5 pb-1 pt-3">
+                {Array.from({ length: 3 }).map((_, j) => (
+                  <MovimientoItemSkeleton key={j} />
+                ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : movimientosFiltrados.length === 0 ? (
         <p className="px-5 lg:px-0 mt-4 text-[12.5px] text-muted-foreground">
           {hayFiltro ? "No hay movimientos que coincidan con este filtro." : "Todavía no cargaste ningún movimiento."}
         </p>
       ) : (
-        <div className="px-5 lg:px-0 mt-4 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3 lg:items-start">
+        <div className="px-5 lg:px-0 mt-4 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3 lg:items-start animate-in fade-in-0 duration-300">
           {Object.entries(grouped).map(([fecha, items]) => (
             <Card key={fecha} className="border-none shadow-sm bg-secondary overflow-hidden">
               <p className="px-3.5 pt-3 text-[10.5px] tracking-[0.1em] uppercase text-muted-foreground">{fecha}</p>

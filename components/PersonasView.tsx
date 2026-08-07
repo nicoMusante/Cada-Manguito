@@ -2,6 +2,7 @@
 
 import { ChevronRight, HandCoins, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatUSD, type Cotizacion } from "@/lib/dolar";
 
 export type PersonaActiva = { persona_id: number; nombre: string; neto: string; ultimo_detalle: string | null };
@@ -49,14 +50,18 @@ export function PersonasView({
       </div>
 
       {loading ? (
-        <p className="px-5 lg:px-0 mt-4 text-[12.5px] text-muted-foreground">Cargando...</p>
+        <div className="px-5 lg:px-0 mt-4 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2 lg:gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-[66px] rounded-xl" />
+          ))}
+        </div>
       ) : activas.length === 0 ? (
         <div className="px-5 lg:px-0 mt-8 flex flex-col items-center text-center gap-2">
           <HandCoins size={22} className="text-muted-foreground" />
           <p className="text-[12.5px] text-muted-foreground">No tenés deudas pendientes con nadie.</p>
         </div>
       ) : (
-        <div className="px-5 lg:px-0 mt-4 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2 lg:gap-3">
+        <div className="px-5 lg:px-0 mt-4 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2 lg:gap-3 animate-in fade-in-0 duration-300">
           {activas.map((p) => {
             const neto = Number(p.neto);
             const teDeben = neto > 0;

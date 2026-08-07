@@ -62,13 +62,7 @@ export function MovimientoModal({
   const cargarCategorias = () => {
     fetch("/api/categorias")
       .then((r) => r.json())
-      .then((rows: CategoriaRow[]) => {
-        const mapped = rows.map(mapCategoria);
-        setCategorias(mapped);
-        if (!esEdicion) {
-          setCategoriaId((actual) => actual ?? mapped.find((c) => c.tipo === tipo)?.id ?? null);
-        }
-      })
+      .then((rows: CategoriaRow[]) => setCategorias(rows.map(mapCategoria)))
       .catch((err) => console.error("Error al cargar categorías:", err));
   };
 
@@ -131,8 +125,9 @@ export function MovimientoModal({
 
   function handleTipoChange(nuevoTipo: "GASTO" | "INGRESO") {
     setTipo(nuevoTipo);
-    const primera = categorias.find((c) => c.tipo === nuevoTipo);
-    setCategoriaId(primera ? primera.id : null);
+    // la categoría anterior era de otro tipo — no tiene sentido para el
+    // nuevo, y tampoco elijo una por defecto (ver cargarCategorias)
+    setCategoriaId(null);
   }
 
   function handleMonedaChange(nuevaMoneda: "ARS" | "USD") {
@@ -211,11 +206,11 @@ export function MovimientoModal({
   return (
     <>
     <div
-      className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/45"
+      className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/45 animate-in fade-in-0 duration-200"
       onClick={onClose}
     >
       <div
-        className="w-full lg:w-[420px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5 bg-card"
+        className="w-full lg:w-[420px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5 bg-card animate-in fade-in-0 slide-in-from-bottom-8 lg:slide-in-from-bottom-0 lg:zoom-in-95 duration-300 ease-out"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">

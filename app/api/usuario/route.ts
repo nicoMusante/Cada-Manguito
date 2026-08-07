@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { getUsuarioId, noAutenticado } from "@/lib/auth";
 import { THEME_LABELS, type ThemeName } from "@/lib/theme";
 import { DOLAR_LABELS, type DolarTipo } from "@/lib/dolar";
+import { demasiadasRequests, demasiadasPeticiones } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export async function PATCH(request: Request) {
   try {
     const usuarioId = await getUsuarioId();
     if (!usuarioId) return noAutenticado();
+    if (demasiadasRequests(`api:${usuarioId}`)) return demasiadasPeticiones();
 
     const { tema, tipo_dolar } = await request.json();
 

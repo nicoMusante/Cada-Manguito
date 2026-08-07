@@ -4,6 +4,7 @@ import { Trash2, Plus } from "lucide-react";
 import { fmt, type GastoFijo } from "@/lib/mockData";
 import { formatUSD, type Cotizacion } from "@/lib/dolar";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { periodoActual, formatPeriodoLabel } from "@/lib/periodo";
 
 export function GastosFijosView({
@@ -36,13 +37,17 @@ export function GastosFijosView({
       </div>
 
       {loading ? (
-        <p className="px-5 lg:px-0 mt-4 text-[12.5px] text-muted-foreground">Cargando...</p>
+        <div className="px-5 lg:px-0 mt-4 space-y-1.5 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-[60px] rounded-xl" />
+          ))}
+        </div>
       ) : gastosFijos.length === 0 ? (
         <p className="px-5 lg:px-0 mt-4 text-[12.5px] text-muted-foreground">
           Todavía no cargaste ningún gasto fijo o recurrente.
         </p>
       ) : (
-        <div className="px-5 lg:px-0 mt-4 space-y-1.5 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">
+        <div className="px-5 lg:px-0 mt-4 space-y-1.5 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3 animate-in fade-in-0 duration-300">
           {gastosFijos.map((g) => {
             const empiezaEnElFuturo = g.mesInicio > periodoActual();
             const cuotaActual = Math.min(g.cuotasGeneradas + 1, g.cuotasTotales ?? Infinity);

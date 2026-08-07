@@ -4,17 +4,18 @@ import { useState } from "react";
 import { TrendingDown, TrendingUp, Clock } from "lucide-react";
 import { computeTotals, fmt, type Movimiento, type CategoriaConId } from "@/lib/mockData";
 import { formatUSD, type Cotizacion } from "@/lib/dolar";
-import { MovimientoItem } from "@/components/MovimientoItem";
+import { MovimientoItem, MovimientoItemSkeleton } from "@/components/MovimientoItem";
 import { CategoriaChipBar } from "@/components/CategoriaChipBar";
 import { Card, CardContent } from "@/components/ui/card";
 
 export function ResumenView({
-  movimientos, loading, categorias, meDeben, yoDebo, onSelectMovimiento, onAddCategoria, onEliminarCategoria,
+  movimientos, loading, categorias, loadingCategorias, meDeben, yoDebo, onSelectMovimiento, onAddCategoria, onEliminarCategoria,
   cotizacion,
 }: {
   movimientos: Movimiento[];
   loading: boolean;
   categorias: CategoriaConId[];
+  loadingCategorias?: boolean;
   meDeben: number;
   yoDebo: number;
   onSelectMovimiento: (m: Movimiento) => void;
@@ -85,6 +86,7 @@ export function ResumenView({
           onToggleSinCategoria={() => setSinCategoria((v) => !v)}
           onAddCategoria={onAddCategoria}
           onEliminarCategoria={handleEliminarCategoria}
+          loading={loadingCategorias}
         />
       </div>
 
@@ -145,13 +147,17 @@ export function ResumenView({
           )}
         </div>
         {loading ? (
-          <p className="text-[12.5px] text-muted-foreground">Cargando movimientos...</p>
+          <div>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <MovimientoItemSkeleton key={i} />
+            ))}
+          </div>
         ) : movimientosAMostrar.length === 0 ? (
           <p className="text-[12.5px] text-muted-foreground">
             {hayFiltro ? "No hay movimientos en esas categorías este mes." : "Todavía no cargaste ningún movimiento."}
           </p>
         ) : (
-          <div>
+          <div className="animate-in fade-in-0 duration-300">
             {movimientosAMostrar.map((m) => (
               <MovimientoItem key={m.id} m={m} subtitle={m.fecha} onEdit={() => onSelectMovimiento(m)} cotizacion={cotizacion} />
             ))}

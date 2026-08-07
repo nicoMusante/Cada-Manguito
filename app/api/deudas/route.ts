@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getUsuarioId, noAutenticado } from "@/lib/auth";
+import { demasiadasRequests, demasiadasPeticiones } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,7 @@ export async function POST(request: Request) {
   try {
     const usuarioId = await getUsuarioId();
     if (!usuarioId) return noAutenticado();
+    if (demasiadasRequests(`api:${usuarioId}`)) return demasiadasPeticiones();
 
     const body = await request.json();
     const { persona_nombre, tipo, monto, descripcion, fecha, movimiento_id } = body;

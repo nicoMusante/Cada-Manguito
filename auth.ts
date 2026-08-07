@@ -1,9 +1,17 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { authConfig } from "./auth.config";
 import { sql } from "@/lib/db";
+import { demasiadosIntentos, registrarIntentoFallido, limpiarIntentos } from "@/lib/rateLimit";
+
+// la tiro cuando un mail viene bloqueado por demasiados intentos fallidos
+// seguidos — el code queda expuesto en la url de redirect, por eso uso uno
+// genérico que no confirma si el mail existe o no
+class DemasiadosIntentos extends CredentialsSignin {
+  code = "rate_limited";
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -21,13 +29,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = credentials?.password as string | undefined;
         if (!email || !password) return null;
 
-        const rows = await sql`SELECT id, email, nombre, password_hash FROM usuarios WHERE email = ${email}`;
+        const identificador = email.trim().toLowerCase();
+        if (await demasiadosIntentos(identificador)) {
+          throw new DemasiadosIntentos();
+        }
+
+        const rows = await sql`SELECT id, email, nombre, password_hash FROM usuarios WHERE email = ${identificador}`;
         const usuario = rows[0] as { id: number; email: string; nombre: string; password_hash: string | null } | undefined;
-        if (!usuario?.password_hash) return null;
+        if (!usuario?.password_hash) {
+          await registrarIntentoFallido(identificador);
+          return null;
+        }
 
         const valido = await bcrypt.compare(password, usuario.password_hash);
-        if (!valido) return null;
+        if (!valido) {
+          await registrarIntentoFallido(identificador);
+          return null;
+        }
 
+        await limpiarIntentos(identificador);
         return { id: String(usuario.id), email: usuario.email, name: usuario.nombre };
       },
     }),

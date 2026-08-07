@@ -4,8 +4,24 @@ import { useRef, useState } from "react";
 import { MoreVertical } from "lucide-react";
 import { type Movimiento, fmt, montoEfectivoArs, SIN_CATEGORIA } from "@/lib/mockData";
 import { formatUSD, type Cotizacion } from "@/lib/dolar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const LONG_PRESS_MS = 220;
+
+// placeholder con la misma silueta de MovimientoItem, para que la lista no
+// aparezca de golpe cuando termina de resolver el GET
+export function MovimientoItemSkeleton() {
+  return (
+    <div className="w-full flex items-center gap-3 py-2.5">
+      <Skeleton className="w-9 h-9 rounded-full shrink-0" />
+      <div className="flex-1 min-w-0 space-y-1.5">
+        <Skeleton className="h-3 w-2/3 max-w-[160px]" />
+        <Skeleton className="h-2.5 w-1/3 max-w-[90px]" />
+      </div>
+      <Skeleton className="h-3.5 w-14 shrink-0" />
+    </div>
+  );
+}
 
 export function MovimientoItem({
   m,
@@ -62,8 +78,16 @@ export function MovimientoItem({
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className={`text-[13px] font-medium truncate ${m.desc ? "text-foreground" : "italic text-muted-foreground"}`}>
-          {m.desc || "Sin descripción"}
+        <p className="text-[13px] font-medium truncate text-foreground">
+          {m.desc ? (
+            m.desc
+          ) : m.categoriaId != null ? (
+            <>
+              {m.cat} <span className="italic text-muted-foreground">(Sin descripción)</span>
+            </>
+          ) : (
+            <span className="italic text-muted-foreground">Sin descripción</span>
+          )}
         </p>
         <p className={`text-[10.5px] text-muted-foreground ${subtitle === SIN_CATEGORIA ? "italic" : ""}`}>{subtitle}</p>
       </div>

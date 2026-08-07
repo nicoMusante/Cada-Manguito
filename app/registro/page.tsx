@@ -88,10 +88,10 @@ export default function RegistroPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="al menos 6 caracteres"
+                placeholder="al menos 8 caracteres"
                 className="w-full bg-transparent text-[13.5px] outline-none text-foreground"
                 required
-                minLength={6}
+                minLength={8}
               />
             </div>
           </div>

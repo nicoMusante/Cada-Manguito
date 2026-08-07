@@ -1,8 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Plus, X, Check } from "lucide-react";
 import type { CategoriaConId } from "@/lib/mockData";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// anchos variados para que el placeholder no se vea como una fila de
+// rectángulos idénticos mientras esperamos el GET de categorías
+const ANCHOS_SKELETON = [88, 64, 104, 76];
 
 // cuánto tiempo queda "armada" la confirmación de borrado antes de cancelarse
 // sola, para que un toque accidental en la x no deje el chip pidiendo
@@ -18,7 +23,7 @@ const CAP_CATEGORIAS = 7;
 // no tiene sentido crear/borrar categorías desde un panel de filtro).
 export function CategoriaChipBar({
   categorias, seleccionadas, sinCategoria, onToggleCategoria, onToggleSinCategoria,
-  onAddCategoria, onEliminarCategoria,
+  onAddCategoria, onEliminarCategoria, loading,
 }: {
   categorias: CategoriaConId[];
   seleccionadas: Set<number>;
@@ -27,9 +32,11 @@ export function CategoriaChipBar({
   onToggleSinCategoria: () => void;
   onAddCategoria?: () => void;
   onEliminarCategoria?: (id: number) => void;
+  loading?: boolean;
 }) {
   const [confirmarEliminarId, setConfirmarEliminarId] = useState<number | null>(null);
   const [expandido, setExpandido] = useState(false);
+  const chipConfirmandoRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (confirmarEliminarId === null) return;
@@ -37,9 +44,34 @@ export function CategoriaChipBar({
     return () => clearTimeout(timer);
   }, [confirmarEliminarId]);
 
+  // si el usuario toca en cualquier otra parte de la pantalla mientras hay
+  // una confirmación de borrado armada, la cancelo al toque en vez de dejar
+  // que se cierre sola por el timer — así un toque accidental en la x se
+  // resuelve de inmediato al tocar afuera, no hay que esperar
+  useEffect(() => {
+    if (confirmarEliminarId === null) return;
+    function handlePointerDown(e: PointerEvent) {
+      if (chipConfirmandoRef.current && !chipConfirmandoRef.current.contains(e.target as Node)) {
+        setConfirmarEliminarId(null);
+      }
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [confirmarEliminarId]);
+
   function confirmarEliminar(id: number) {
     onEliminarCategoria?.(id);
     setConfirmarEliminarId(null);
+  }
+
+  if (loading && categorias.length === 0) {
+    return (
+      <>
+        {ANCHOS_SKELETON.map((w, i) => (
+          <Skeleton key={i} className="h-8 rounded-full shrink-0" style={{ width: w }} />
+        ))}
+      </>
+    );
   }
 
   const hayFiltro = seleccionadas.size > 0 || sinCategoria;
@@ -51,7 +83,7 @@ export function CategoriaChipBar({
         const seleccionada = seleccionadas.has(c.id);
         const confirmando = confirmarEliminarId === c.id;
         return (
-          <div key={c.id} className="relative shrink-0">
+          <div key={c.id} ref={confirmando ? chipConfirmandoRef : undefined} className="relative shrink-0">
             {seleccionada && !confirmando && <div className="chip-etiqueta-ring" aria-hidden />}
             <div
               className="chip-etiqueta relative flex items-center gap-1.5 pr-2 py-2 text-white transition"

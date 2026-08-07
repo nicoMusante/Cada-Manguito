@@ -1,9 +1,7 @@
-import { Home as HomeIcon, Zap, Coffee, ShoppingBag, Wallet, LucideIcon } from "lucide-react";
+import { Wallet, LucideIcon } from "lucide-react";
 import { ICONS } from "./icons";
 import { parseFechaLocal } from "./periodo";
 import type { Cotizacion } from "./dolar";
-
-export type Categoria = { name: string; icon: LucideIcon; color: string };
 
 // Forma en la que llegan las filas desde GET /api/categorias
 export type CategoriaRow = {
@@ -14,7 +12,13 @@ export type CategoriaRow = {
   icono: string | null;
 };
 
-export type CategoriaConId = Categoria & { id: number; tipo: "INGRESO" | "GASTO" };
+export type CategoriaConId = {
+  id: number;
+  name: string;
+  tipo: "INGRESO" | "GASTO";
+  color: string;
+  icon: LucideIcon;
+};
 
 export function mapCategoria(row: CategoriaRow): CategoriaConId {
   return {
@@ -25,14 +29,6 @@ export function mapCategoria(row: CategoriaRow): CategoriaConId {
     icon: (row.icono && ICONS[row.icono]) || Wallet,
   };
 }
-
-// Categorías: todavía sin endpoint propio, quedan fijas por ahora.
-export const categories: Categoria[] = [
-  { name: "Casa", icon: HomeIcon, color: "#B8562F" },
-  { name: "Servicios", icon: Zap, color: "#8A6D3B" },
-  { name: "Comida", icon: Coffee, color: "#4A5D6B" },
-  { name: "Compras", icon: ShoppingBag, color: "#6B4A6B" },
-];
 
 export type Movimiento = {
   id: number;
@@ -152,18 +148,6 @@ export function computeTotals(movimientos: Movimiento[], cotizacion: Cotizacion 
   const gastos = Math.abs(movimientos.filter((m) => m.tipo === "out").reduce((a, b) => a + montoEfectivoArs(b, cotizacion), 0));
   return { ingresos, gastos };
 }
-
-export type Persona = { nombre: string; neto: number; detalle: string };
-
-// Personas: todavía sin endpoint propio, sigue siendo mock por ahora.
-export const personas: Persona[] = [
-  { nombre: "Fede", neto: 20000, detalle: "Te debe $20.000" },
-  { nombre: "Cami", neto: 18000, detalle: "Te debe $18.000" },
-  { nombre: "Male", neto: -5000, detalle: "Le debés $5.000 (te debía $17.000, le debías $22.000)" },
-];
-
-export const meDeben = personas.filter((p) => p.neto > 0).reduce((a, p) => a + p.neto, 0);
-export const yoDebo = Math.abs(personas.filter((p) => p.neto < 0).reduce((a, p) => a + p.neto, 0));
 
 export const fmt = (n: number) =>
   n.toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
