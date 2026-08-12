@@ -107,6 +107,16 @@ Todas reciben `p_usuario_id` como primer parámetro (salvo `sembrar_categorias_d
 - **Reportes**: `resumen_mes(usuario_id, anio, mes)`, `evolucion_mensual(usuario_id, cant_meses)`, `gasto_por_categoria(usuario_id, anio, mes)`.
 - **Personas / Deudas**: `obtener_o_crear_persona(usuario_id, nombre)`, `crear_deuda(usuario_id, persona_nombre, tipo, monto, descripcion, fecha, movimiento_id, registrar_movimiento)` (el último flag genera el movimiento espejo, ver Arquitectura), `actualizar_deuda(usuario_id, id, ...)` (sólo si sigue pendiente, sin pagos y sin `movimiento_id`), `eliminar_deuda(usuario_id, id)`, `saldar_persona(usuario_id, persona_id)`, `saldar_deudas(usuario_id, ids[])` (salda entradas puntuales), `pagar_movimiento(usuario_id, deuda_id, monto)` (registra una cuota, auto-salda si cubre el saldo), `eliminar_pago(usuario_id, pago_id)` (deshace una cuota, reabre la deuda si hacía falta), `obtener_o_crear_categoria_pago_deuda`/`registrar_movimiento_pago_deuda` (generan el movimiento real al cobrar/pagar una deuda standalone).
 
+## Tareas pendientes entre sesiones
+
+`TODO.md` (raíz del repo, versionado) es la lista de tareas que quedaron sin hacer al cerrar una sesión — ya sea por quedarse sin tokens, cambio de dispositivo, corte de sesión, o simplemente porque el usuario cortó ahí. Sirve para que la próxima sesión (en cualquier dispositivo) recupere el contexto sin depender de la memoria de la conversación anterior.
+
+- **Cuándo escribir ahí**: al final de una sesión donde queda trabajo identificado pero no hecho (un bug encontrado y no arreglado, una migración pendiente de correr en Neon, un paso de una tarea multi-parte que no se llegó a completar). No hace falta que el usuario lo pida explícitamente — si se identifica algo pendiente y la sesión está terminando, anotarlo.
+- **Qué anotar**: una lista con checkboxes (`- [ ]`), agrupada por tema si hay varias, con referencia a archivo/línea cuando aplica y suficiente contexto como para que una sesión nueva (sin memoria de ésta) entienda qué hay que hacer y por qué, sin tener que releer todo el historial de git.
+- **Al retomar**: si `TODO.md` tiene contenido, revisarlo al empezar a trabajar en el repo — puede tener contexto relevante para la tarea que se está por hacer aunque no se pida explícitamente "segui con lo pendiente".
+- **Al terminar un ítem**: tildarlo (`- [x]`) o borrar la línea si ya no aporta nada; no dejar que se acumulen ítems resueltos sin marcar.
+- No es un reemplazo de la sección "Resiliencia / disponibilidad" ni de comentarios en el código — eso documenta decisiones y estado permanente del proyecto; `TODO.md` es sólo la cola de trabajo, transitoria por naturaleza.
+
 ## Protocolo de Interacción y Ahorro de Tokens
 
 1. **Recepción de Contexto en Tramos**:
