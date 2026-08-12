@@ -16,6 +16,26 @@ export async function demasiadosIntentos(identificador: string): Promise<boolean
 
 export async function registrarIntentoFallido(identificador: string) {
   await sql`INSERT INTO intentos_auth (identificador) VALUES (${identificador})`;
+  // limpio de paso las filas viejas de este identificador (fuera de la
+  // ventana que ya mira demasiadosIntentos) para que la tabla no crezca sin
+  // límite con identificadores que no se repiten (ej. mails distintos en
+  // /recuperar)
+  await sql`
+    DELETE FROM intentos_auth
+    WHERE identificador = ${identificador} AND creado_en <= CURRENT_TIMESTAMP - (${VENTANA_MINUTOS} * INTERVAL '1 minute')
+  `;
+}
+
+// ip real del request — x-forwarded-for puede traer varias, separadas por
+// coma; el primer valor lo controla el cliente (lo puede spoofear), el que
+// vale es el último que agrega el proxy de confianza (Vercel)
+export function ipDelRequest(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const partes = forwarded.split(",").map((p) => p.trim());
+    return partes[partes.length - 1] || "desconocida";
+  }
+  return request.headers.get("x-real-ip") || "desconocida";
 }
 
 // se llama tras un login exitoso, para no arrastrar intentos viejos

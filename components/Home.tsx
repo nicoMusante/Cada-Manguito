@@ -377,7 +377,7 @@ export function Home({
       {modal.mode === "new" && modal.tipo === "deuda" && (
         <DeudaModal
           onClose={() => setModal({ mode: "closed" })}
-          onSaved={cargarPersonas}
+          onSaved={alGuardarMovimiento}
           tipoSelector={{ actual: "deuda", onCambiar: (tipo) => setModal({ mode: "new", tipo }) }}
         />
       )}

@@ -366,7 +366,7 @@ export function PersonaDetalleModal({
                 </Button>
               </div>
             ) : (
-              neto !== 0 && (
+              historial.some((h) => h.estado === "pendiente") && (
                 <Button
                   onClick={handleSaldar}
                   disabled={saldando}

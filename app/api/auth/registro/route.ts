@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
-import { demasiadosIntentos, registrarIntentoFallido } from "@/lib/rateLimit";
+import { demasiadosIntentos, registrarIntentoFallido, ipDelRequest } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
-// identifico por ip para frenar alta masiva de cuentas, no por mail (que acá siempre es nuevo)
-function ipDelRequest(request: Request): string {
-  return request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "desconocida";
-}
-
-// POST /api/auth/registro → alta de cuenta nueva con mail y contraseña
+// POST /api/auth/registro → alta de cuenta nueva con mail y contraseña, identifico por ip para frenar alta masiva (el mail acá siempre es nuevo)
 export async function POST(request: Request) {
   try {
     const ip = ipDelRequest(request);

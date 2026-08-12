@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getUsuarioId, noAutenticado } from "@/lib/auth";
 import { demasiadasRequests, demasiadasPeticiones } from "@/lib/rateLimit";
+import { periodoActualAr } from "@/lib/periodo";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -14,7 +15,8 @@ export async function GET(request: Request) {
     if (!usuarioId) return noAutenticado();
 
     const { searchParams } = new URL(request.url);
-    const periodoActual = new Date().toISOString().slice(0, 7);
+    // hora de Argentina, no la del server (Vercel corre en UTC) — ver periodoActualAr()
+    const periodoActual = periodoActualAr();
     const periodo = searchParams.get("periodo") || periodoActual;
 
     // si se está pidiendo el mes en curso, primero genero los movimientos de

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { sql } from "@/lib/db";
-import { demasiadosIntentos, registrarIntentoFallido } from "@/lib/rateLimit";
+import { demasiadosIntentos, registrarIntentoFallido, ipDelRequest } from "@/lib/rateLimit";
 import { enviarMailRecuperacion } from "@/lib/mail";
 
 export const dynamic = "force-dynamic";
@@ -16,14 +16,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Falta el email" }, { status: 400 });
     }
     const identificador = email.trim().toLowerCase();
+    // el límite por mail solo no alcanza: variando el mail en cada request
+    // se lo saltea entero, así que también cuento por ip (ver ipDelRequest)
+    const ip = ipDelRequest(request);
 
-    if (await demasiadosIntentos(`recuperar:${identificador}`)) {
+    if (await demasiadosIntentos(`recuperar:${identificador}`) || await demasiadosIntentos(`recuperar-ip:${ip}`)) {
       return NextResponse.json(
         { error: "Demasiados pedidos. Esperá unos minutos y volvé a intentar." },
         { status: 429 }
       );
     }
     await registrarIntentoFallido(`recuperar:${identificador}`);
+    await registrarIntentoFallido(`recuperar-ip:${ip}`);
 
     const rows = await sql`SELECT id, password_hash FROM usuarios WHERE email = ${identificador}`;
     const usuario = rows[0] as { id: number; password_hash: string | null } | undefined;

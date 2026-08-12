@@ -38,8 +38,16 @@ export function DeudaModal({
   const [descripcion, setDescripcion] = useState(deuda?.descripcion ?? "");
   const [monto, setMonto] = useState(deuda ? numberToMontoDisplay(deuda.monto, false) : "");
   const [fecha, setFecha] = useState(deuda ? deuda.fecha.slice(0, 10) : hoyLocal());
+  //si la plata ya se movió genero el movimiento espejo al crear, y el que sale al saldar lo cancela.
+  //por defecto va prendido en "me deben" (presté guita) y apagado en "debo" (me invitaron y devuelvo después)
+  const [registrarMov, setRegistrarMov] = useState((deuda?.tipo ?? "ME_DEBEN") === "ME_DEBEN");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function cambiarTipo(nuevo: "ME_DEBEN" | "YO_DEBO") {
+    setTipo(nuevo);
+    setRegistrarMov(nuevo === "ME_DEBEN");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -63,6 +71,7 @@ export function DeudaModal({
           monto: montoNum,
           descripcion: descripcion.trim(),
           fecha,
+          ...(esEdicion ? {} : { registrar_movimiento: registrarMov }),
         }),
       });
 
@@ -125,7 +134,7 @@ export function DeudaModal({
           <div className="flex rounded-full p-1 bg-secondary">
             <button
               type="button"
-              onClick={() => setTipo("ME_DEBEN")}
+              onClick={() => cambiarTipo("ME_DEBEN")}
               className={`flex-1 py-2 rounded-full text-[13px] font-medium transition ${
                 tipo === "ME_DEBEN" ? "bg-income text-income-foreground" : "text-muted-foreground"
               }`}
@@ -134,7 +143,7 @@ export function DeudaModal({
             </button>
             <button
               type="button"
-              onClick={() => setTipo("YO_DEBO")}
+              onClick={() => cambiarTipo("YO_DEBO")}
               className={`flex-1 py-2 rounded-full text-[13px] font-medium transition ${
                 tipo === "YO_DEBO" ? "bg-expense text-expense-foreground" : "text-muted-foreground"
               }`}
@@ -186,6 +195,40 @@ export function DeudaModal({
               />
             </div>
           </div>
+
+          {!esEdicion && (
+            <button
+              type="button"
+              onClick={() => setRegistrarMov((v) => !v)}
+              className="w-full flex items-center gap-3 text-left rounded-xl px-3.5 py-3 bg-secondary active:opacity-70 transition"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium text-foreground">
+                  {tipo === "ME_DEBEN" ? "La plata ya salió de tu cuenta" : "La plata ya entró a tu cuenta"}
+                </p>
+                <p className="text-[10.5px] mt-0.5 text-muted-foreground">
+                  {registrarMov
+                    ? tipo === "ME_DEBEN"
+                      ? "Anoto el gasto ahora y el ingreso al cobrar."
+                      : "Anoto el ingreso ahora y el gasto al pagar."
+                    : tipo === "ME_DEBEN"
+                      ? "Sólo anoto el ingreso cuando cobres."
+                      : "Sólo anoto el gasto cuando pagues."}
+                </p>
+              </div>
+              <span
+                className={`w-10 h-6 rounded-full shrink-0 relative transition-colors ${
+                  registrarMov ? "bg-primary" : "bg-border"
+                }`}
+              >
+                <span
+                  className={`absolute top-1 w-4 h-4 rounded-full bg-card transition-all ${
+                    registrarMov ? "left-5" : "left-1"
+                  }`}
+                />
+              </span>
+            </button>
+          )}
 
           {error && <p className="text-[12px] text-destructive">{error}</p>}
 
