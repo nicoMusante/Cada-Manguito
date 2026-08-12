@@ -20,14 +20,19 @@ const cache = new Map<string, { data: Cotizacion; ts: number }>();
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const tipo = searchParams.get("tipo") || "blue";
+
+  // la autenticación queda afuera del try/catch de abajo a propósito: si
+  // auth() tira, tiene que responder como error, no disfrazarse de "no hay
+  // cotización cacheada, devuelvo la vieja" y terminar sirviendo datos con
+  // un 200 a una sesión rota
+  const usuarioId = await getUsuarioId();
+  if (!usuarioId) return noAutenticado();
+
+  if (!TIPOS_VALIDOS.includes(tipo as DolarTipo)) {
+    return NextResponse.json({ error: "Tipo de dólar inválido" }, { status: 400 });
+  }
+
   try {
-    const usuarioId = await getUsuarioId();
-    if (!usuarioId) return noAutenticado();
-
-    if (!TIPOS_VALIDOS.includes(tipo as DolarTipo)) {
-      return NextResponse.json({ error: "Tipo de dólar inválido" }, { status: 400 });
-    }
-
     const cacheado = cache.get(tipo);
     if (cacheado && Date.now() - cacheado.ts < CACHE_MS) {
       return NextResponse.json(cacheado.data, { headers: { "Cache-Control": "no-store, max-age=0" } });

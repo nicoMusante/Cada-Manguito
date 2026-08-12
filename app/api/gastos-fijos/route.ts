@@ -19,7 +19,7 @@ export async function GET() {
              (SELECT COUNT(*) FROM movimientos m WHERE m.gasto_fijo_id = gf.id)::int AS cuotas_generadas
       FROM gastos_fijos gf
       JOIN categorias c ON c.id = gf.categoria_id
-      WHERE gf.activo = true AND gf.usuario_id = ${usuarioId}
+      WHERE gf.activo = true AND c.activo = true AND gf.usuario_id = ${usuarioId}
       ORDER BY gf.dia_mes, gf.descripcion
     `;
     return NextResponse.json(rows, { headers: { "Cache-Control": "no-store, max-age=0" } });

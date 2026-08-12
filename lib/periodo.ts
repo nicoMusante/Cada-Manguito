@@ -27,6 +27,14 @@ export function sumarMeses(periodo: string, delta: number): string {
   return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
 }
 
+// rango [inicio, fin) del período, para filtrar "fecha" directo en vez de la
+// columna calculada "periodo" de v_movimientos (esa no tiene índice de
+// expresión, así que un filtro por rango en "fecha" sí puede usar el índice
+// (usuario_id, fecha) de movimientos)
+export function rangoDelPeriodo(periodo: string): { inicio: string; fin: string } {
+  return { inicio: `${periodo}-01`, fin: `${sumarMeses(periodo, 1)}-01` };
+}
+
 export function formatPeriodoLabel(periodo: string): string {
   const [anio, mes] = periodo.split("-").map(Number);
   const fecha = new Date(anio, mes - 1, 1);

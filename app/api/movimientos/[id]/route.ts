@@ -20,7 +20,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const body = await request.json();
     const { categoria_id, descripcion, monto, tipo, fecha, moneda, monto_original } = body;
 
-    if (!monto || !tipo) {
+    if (monto == null || !tipo) {
       return NextResponse.json({ error: "Faltan campos requeridos: monto, tipo" }, { status: 400 });
     }
     if (tipo !== "GASTO" && tipo !== "INGRESO") {

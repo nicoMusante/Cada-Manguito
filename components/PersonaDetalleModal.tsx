@@ -182,7 +182,7 @@ export function PersonaDetalleModal({
       onClick={onClose}
     >
       <div
-        className="w-full lg:w-[440px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5 max-h-[85vh] overflow-y-auto bg-card animate-in fade-in-0 slide-in-from-bottom-8 lg:slide-in-from-bottom-0 lg:zoom-in-95 duration-300 ease-out"
+        className="w-full lg:w-[440px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5 max-h-[85dvh] overflow-y-auto bg-card animate-in fade-in-0 slide-in-from-bottom-8 lg:slide-in-from-bottom-0 lg:zoom-in-95 duration-300 ease-out"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
@@ -393,7 +393,7 @@ export function PersonaDetalleModal({
         onClose={() => setEditando(null)}
         onSaved={() => {
           onChanged();
-          refrescar();
+          refrescar().catch((err) => console.error("Error al refrescar historial:", err));
         }}
       />
     )}

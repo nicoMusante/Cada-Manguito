@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ id: rows[0].id }, { status: 201 });
   } catch (error) {
     console.error("Error en POST /api/deudas:", error);
-    return NextResponse.json({ error: "No se pudo crear la deuda" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "No se pudo crear la deuda";
+    return NextResponse.json({ error: message.replace(/^.*ERROR:\s*/, "") }, { status: 400 });
   }
 }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getUsuarioId, noAutenticado } from "@/lib/auth";
 import { demasiadasRequests, demasiadasPeticiones } from "@/lib/rateLimit";
-import { periodoActualAr } from "@/lib/periodo";
+import { periodoActualAr, rangoDelPeriodo } from "@/lib/periodo";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -25,10 +25,11 @@ export async function GET(request: Request) {
       await sql`SELECT generar_gastos_fijos_pendientes(${usuarioId})`;
     }
 
+    const { inicio, fin } = rangoDelPeriodo(periodo);
     const rows = await sql`
       SELECT id, categoria_id, descripcion, categoria, tipo, color_hex, icono, monto, moneda, monto_original, fecha
       FROM v_movimientos
-      WHERE usuario_id = ${usuarioId} AND periodo = ${periodo}
+      WHERE usuario_id = ${usuarioId} AND fecha >= ${inicio}::date AND fecha < ${fin}::date
       ORDER BY fecha DESC, id DESC
     `;
     return NextResponse.json(rows, { headers: { "Cache-Control": "no-store, max-age=0" } });
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { categoria_id, descripcion, monto, tipo, fecha, compartir, moneda, monto_original } = body;
 
-    if (!monto || !tipo) {
+    if (monto == null || !tipo) {
       return NextResponse.json({ error: "Faltan campos requeridos: monto, tipo" }, { status: 400 });
     }
     if (tipo !== "GASTO" && tipo !== "INGRESO") {
@@ -76,16 +77,16 @@ export async function POST(request: Request) {
     // Si se compartió el gasto, la parte de cada persona queda como un
     // pendiente a favor ("me deben"), vinculado a este movimiento. El split
     // (igualitario o personalizado) ya viene calculado desde MovimientoModal.
-    if (Array.isArray(compartir?.personas)) {
-      for (const p of compartir.personas) {
-        if (!p.persona_nombre?.trim() || !p.monto) continue;
-        await sql`
-          SELECT crear_deuda(
-            ${usuarioId}, ${p.persona_nombre.trim()}, 'ME_DEBEN', ${p.monto},
-            ${descripcion}, ${fecha ?? null}, ${movimientoId}
-          )
-        `;
-      }
+    // Se crean todas en una sola llamada a la función (una sola transacción
+    // del lado de Postgres) para que no queden deudas parciales si falla a
+    // mitad de camino.
+    if (Array.isArray(compartir?.personas) && compartir.personas.length > 0) {
+      await sql`
+        SELECT crear_deudas_compartidas(
+          ${usuarioId}, ${movimientoId}, ${descripcion?.trim() || null}, ${fecha ?? null},
+          ${JSON.stringify(compartir.personas)}::jsonb
+        )
+      `;
     }
 
     return NextResponse.json({ id: movimientoId }, { status: 201 });

@@ -2,30 +2,35 @@
 
 Ver protocolo de uso de este archivo en CLAUDE.md → "Tareas pendientes entre sesiones".
 
+No queda nada pendiente de la ronda anterior — todo lo de abajo se resolvió y aplicó contra Neon en esta sesión.
+
 ## Migraciones sin correr en Neon
 
-- [ ] `db/migracion_prestamos.sql` — sin esto, el toggle "la plata ya salió/entró de tu cuenta" de `DeudaModal` no hace nada (la función vieja de `crear_deuda` no acepta el parámetro nuevo).
-- [ ] `db/migracion_personas_compensadas.sql` — sin esto, una persona con deudas que se compensan exacto (neto = 0) sigue sin aparecer en la pestaña Deudas ni poder saldarse.
+- [x] `db/migracion_prestamos.sql` — corrida contra Neon.
+- [x] `db/migracion_personas_compensadas.sql` — corrida contra Neon.
 
-## Código — hallazgos de la auditoría 2026-08-11 (nivel Alto, sin resolver)
+## Código — hallazgos de la auditoría 2026-08-11 (nivel Alto)
 
-- [ ] **Gastos fijos siguen generando movimientos con una categoría borrada.** `eliminar_categoria` (`db/schema.sql`) no toca `gastos_fijos`; `generar_gastos_fijos_pendientes` no valida que la categoría siga activa, y `GET /api/gastos-fijos` hace el JOIN sin filtrar `c.activo = true`.
-- [ ] **Crear un movimiento compartido con varias personas no es transaccional.** En `POST /api/movimientos` (app/api/movimientos/route.ts), el `for` que llama `crear_deuda` por cada persona corre en transacciones separadas (driver HTTP de Neon) — si falla a mitad de camino quedan deudas parciales sin el resto. Requiere una función PL/pgSQL que reciba el array completo.
-- [ ] **Un movimiento en $0 no se puede editar ni borrar.** `PATCH`/`POST /api/movimientos` rechazan `monto: 0` con `if (!monto || !tipo)`, pero el esquema lo permite a propósito (gasto compartido cobrado por completo). Cambiar a `monto == null`.
-- [ ] **Deudas de gasto compartido sin descripción rompen `ultimo_detalle`.** `POST /api/movimientos` pasa `descripcion` cruda a `crear_deuda`; si un movimiento tiene categoría pero no descripción, la concatenación en `v_personas_activas` da NULL entero. Necesita `COALESCE`.
+- [x] Gastos fijos con categoría borrada: `eliminar_categoria` ahora también da de baja los gastos fijos que dependían de esa categoría; `generar_gastos_fijos_pendientes` valida `categorias.activo` como resguardo extra; `GET /api/gastos-fijos` filtra `c.activo = true` en el JOIN.
+- [x] Movimiento compartido no transaccional: nueva función `crear_deudas_compartidas` (recibe el array completo de personas, una sola llamada/transacción); `POST /api/movimientos` la usa en vez de loopear `crear_deuda` por persona.
+- [x] Movimiento en $0 no editable: `PATCH`/`POST /api/movimientos` cambiaron `if (!monto || !tipo)` por `if (monto == null || !tipo)`; `MovimientoModal` permite `monto === 0` sólo en edición.
+- [x] `ultimo_detalle` con NULL: `v_personas_activas` usa `COALESCE(d2.descripcion, 'Sin descripción')`.
 
-## Código — nivel Medio (sin resolver)
+## Código — nivel Medio
 
-- [ ] `GET /api/movimientos` filtra por `periodo = TO_CHAR(fecha, 'YYYY-MM')`, expresión sin índice — seq scan en cada carga. Cambiar a filtro por rango de fechas + índice `(usuario_id, fecha)`.
-- [ ] `PersonaDetalleModal.tsx` usa `max-h-[85vh]` en vez de `85dvh` (único lugar de la app que no sigue la convención de `dvh`, ver CLAUDE.md).
-- [ ] `POST /api/auth/registro` no valida formato de email, sólo que no esté vacío.
-- [ ] `resumen_mes`, `evolucion_mensual`, `gasto_por_categoria` (db/schema.sql) son código muerto — nada en TS las llama, y si se conectan algún día van a contradecir el cálculo de USD en vivo del cliente (`montoEfectivoArs`).
+- [x] `GET /api/movimientos` ahora filtra por rango de `fecha` (`rangoDelPeriodo` en `lib/periodo.ts`) en vez de la columna calculada `periodo`; nuevo índice `ix_movimientos_usuario_fecha (usuario_id, fecha)`.
+- [x] `PersonaDetalleModal.tsx` usa `max-h-[85dvh]`.
+- [x] `POST /api/auth/registro` valida formato de email con regex antes de crear la cuenta.
+- [x] `resumen_mes`, `evolucion_mensual`, `gasto_por_categoria` eliminadas de `db/schema.sql` y de Neon (código muerto).
 
-## Código — nivel Menor (sin resolver)
+## Código — nivel Menor
 
-- [ ] `v_personas_activas` no filtra `d.usuario_id = p.usuario_id` en el JOIN — hoy no hay fuga porque `obtener_o_crear_persona` ya filtra por usuario, pero el aislamiento ahí queda implícito en vez de explícito.
-- [ ] Montos que superan la precisión de `Number`/`NUMERIC(14,2)` rompen en silencio (`lib/formatMonto.ts`, 500 genérico de Postgres).
-- [ ] `POST /api/deudas` devuelve 500 genérico en vez de traducir el mensaje de Postgres como el resto de las rutas.
-- [ ] `refrescar()` en `PersonaDetalleModal.tsx` no tiene `.catch`.
-- [ ] `GET /api/dolar` devuelve la cotización cacheada desde el `catch` aunque el error haya sido de autenticación.
-- [ ] `reciclar_id_usuario` (trigger) pierde el id 1 si se borran todos los usuarios (`COALESCE(MAX(id), 1)`).
+- [x] `v_personas_activas` ahora filtra `d.usuario_id = p.usuario_id` explícito en el JOIN.
+- [x] `POST /api/deudas` traduce el mensaje de Postgres igual que el resto de las rutas (400 con el mensaje limpio, no 500 genérico).
+- [x] `refrescar()` en `PersonaDetalleModal.tsx` tiene `.catch` en el único call site que no estaba dentro de un try/catch (el `onSaved` de `DeudaModal`).
+- [x] `GET /api/dolar` saca la resolución de auth del try/catch, así un error de `auth()` no cae en el fallback de cotización cacheada.
+- [x] `reciclar_id_usuario` usa `setval(..., 1, false)` cuando no queda ningún usuario, para que el próximo alta sea id 1 y no 2.
+
+## No abordado (montos que superan precisión de Number/NUMERIC)
+
+- [ ] Montos que superan la precisión de `Number`/`NUMERIC(14,2)` rompen en silencio (`lib/formatMonto.ts`, 500 genérico de Postgres) — no se tocó esta sesión, requiere decidir el manejo (¿validar tope en el cliente? ¿mensaje de error dedicado?) antes de tocar código.

@@ -142,7 +142,11 @@ export function MovimientoModal({
 
     const montoNum = Number(parseMontoInput(monto));
     if (!categoriaId && !descripcion.trim()) return setError("Agregá una categoría o una descripción.");
-    if (!montoNum || montoNum <= 0) return setError("El monto tiene que ser mayor a 0.");
+    // en edición se permite 0 (gasto compartido que ya se cobró completo);
+    // al crear, no tiene sentido cargar un movimiento en $0
+    if (Number.isNaN(montoNum) || montoNum < 0 || (montoNum === 0 && !esEdicion)) {
+      return setError("El monto tiene que ser mayor a 0.");
+    }
     if (!esEdicion && tipo === "GASTO" && compartir && !descripcion.trim()) return setError("Para compartir el gasto agregá una descripción.");
     if (!esEdicion && tipo === "GASTO" && compartir && errorCompartir) return setError(errorCompartir);
     if (moneda === "USD" && !cotizacion?.venta) return setError("No se pudo obtener la cotización. Probá de nuevo en un momento.");

@@ -104,6 +104,11 @@ CREATE INDEX IF NOT EXISTS ix_movimientos_fecha      ON movimientos (fecha);
 CREATE INDEX IF NOT EXISTS ix_movimientos_cat_fecha  ON movimientos (categoria_id, fecha);
 CREATE INDEX IF NOT EXISTS ix_movimientos_gasto_fijo ON movimientos (gasto_fijo_id);
 CREATE INDEX IF NOT EXISTS ix_movimientos_usuario    ON movimientos (usuario_id);
+-- cubre el filtro por período de GET /api/movimientos (usuario_id + rango de
+-- fecha); antes filtraba por la columna calculada "periodo" de v_movimientos
+-- (TO_CHAR(fecha, 'YYYY-MM')), que al no tener índice de expresión forzaba
+-- un seq scan en cada carga
+CREATE INDEX IF NOT EXISTS ix_movimientos_usuario_fecha ON movimientos (usuario_id, fecha);
 
 CREATE TABLE IF NOT EXISTS personas (
     id           INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -208,7 +213,7 @@ SELECT
         -- TO_CHAR con 'Mon' depende del locale del servidor (en Neon es
         -- inglés, ej. "Aug"); arma el mes abreviado a mano para que salga
         -- siempre en español sin importar el locale de Postgres.
-        SELECT d2.descripcion || ' · ' || TO_CHAR(d2.fecha, 'DD') || ' ' ||
+        SELECT COALESCE(d2.descripcion, 'Sin descripción') || ' · ' || TO_CHAR(d2.fecha, 'DD') || ' ' ||
                (ARRAY['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'])[EXTRACT(MONTH FROM d2.fecha)::int]
         FROM deudas d2
         WHERE d2.persona_id = p.id AND d2.estado = 'pendiente'
@@ -217,7 +222,7 @@ SELECT
     ) AS ultimo_detalle,
     p.usuario_id
 FROM personas p
-JOIN deudas d ON d.persona_id = p.id
+JOIN deudas d ON d.persona_id = p.id AND d.usuario_id = p.usuario_id
 LEFT JOIN LATERAL (
     SELECT SUM(monto) AS pagado FROM pagos_deuda WHERE deuda_id = d.id
 ) pg ON true
@@ -256,8 +261,18 @@ $$ LANGUAGE plpgsql;
 -- vez de dejarlo perdido para siempre (sólo relevante en la cola: borrar un
 -- id intermedio no genera ningún efecto, la secuencia sigue igual).
 CREATE OR REPLACE FUNCTION reciclar_id_usuario() RETURNS trigger AS $$
+DECLARE
+    v_max_id INTEGER;
 BEGIN
-    PERFORM setval(pg_get_serial_sequence('usuarios', 'id'), COALESCE((SELECT MAX(id) FROM usuarios), 1));
+    SELECT MAX(id) INTO v_max_id FROM usuarios;
+    IF v_max_id IS NULL THEN
+        -- no queda ningún usuario: el próximo alta tiene que volver a ser el
+        -- id 1, no el 2 (setval con is_called=false hace que el próximo
+        -- nextval() devuelva justo el valor pasado, en vez de ese valor + 1)
+        PERFORM setval(pg_get_serial_sequence('usuarios', 'id'), 1, false);
+    ELSE
+        PERFORM setval(pg_get_serial_sequence('usuarios', 'id'), v_max_id);
+    END IF;
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
@@ -284,6 +299,11 @@ BEGIN
     END IF;
 
     UPDATE movimientos SET categoria_id = NULL
+    WHERE categoria_id = p_id AND usuario_id = p_usuario_id;
+
+    -- doy de baja también los gastos fijos que dependían de esta categoría,
+    -- si no quedan generando movimientos con una categoría inactiva
+    UPDATE gastos_fijos SET activo = false
     WHERE categoria_id = p_id AND usuario_id = p_usuario_id;
 END;
 $$ LANGUAGE plpgsql;
@@ -391,7 +411,13 @@ DECLARE
     v_creados INTEGER := 0;
 BEGIN
     v_periodo := TO_CHAR(v_hoy, 'YYYY-MM');
-    FOR v_gf IN SELECT * FROM gastos_fijos WHERE activo = true AND usuario_id = p_usuario_id LOOP
+    -- excluyo gastos fijos cuya categoría quedó inactiva (baja lógica), aunque
+    -- eliminar_categoria ya los da de baja a ellos también: queda como resguardo
+    FOR v_gf IN
+        SELECT gf.* FROM gastos_fijos gf
+        JOIN categorias c ON c.id = gf.categoria_id
+        WHERE gf.activo = true AND gf.usuario_id = p_usuario_id AND c.activo = true
+    LOOP
         IF v_periodo >= v_gf.mes_inicio
            AND (v_gf.mes_fin IS NULL OR v_periodo <= v_gf.mes_fin)
            AND EXTRACT(DAY FROM v_hoy) >= v_gf.dia_mes
@@ -502,50 +528,6 @@ BEGIN
     IF NOT FOUND THEN
         RAISE EXCEPTION 'El movimiento indicado no existe.';
     END IF;
-END;
-$$ LANGUAGE plpgsql;
-
--- Reportes (definidas, pero el frontend hoy todavía calcula estos totales
--- del lado del cliente — quedan disponibles para cuando se conecten).
-CREATE OR REPLACE FUNCTION resumen_mes(p_usuario_id INTEGER, p_anio INTEGER, p_mes INTEGER)
-RETURNS TABLE (total_ingresos NUMERIC, total_gastos NUMERIC, saldo NUMERIC) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT
-        COALESCE(SUM(CASE WHEN tipo = 'INGRESO' THEN monto END), 0),
-        COALESCE(SUM(CASE WHEN tipo = 'GASTO'   THEN monto END), 0),
-        COALESCE(SUM(monto_con_signo), 0)
-    FROM v_movimientos
-    WHERE usuario_id = p_usuario_id AND EXTRACT(YEAR FROM fecha) = p_anio AND EXTRACT(MONTH FROM fecha) = p_mes;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION evolucion_mensual(p_usuario_id INTEGER, p_cant_meses INTEGER DEFAULT 6)
-RETURNS TABLE (periodo TEXT, ingresos NUMERIC, gastos NUMERIC, saldo NUMERIC) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT
-        v.periodo,
-        COALESCE(SUM(CASE WHEN v.tipo = 'INGRESO' THEN v.monto END), 0),
-        COALESCE(SUM(CASE WHEN v.tipo = 'GASTO'   THEN v.monto END), 0),
-        COALESCE(SUM(v.monto_con_signo), 0)
-    FROM v_movimientos v
-    WHERE v.usuario_id = p_usuario_id
-      AND v.mes >= (DATE_TRUNC('month', hoy_ar()) - (p_cant_meses - 1) * INTERVAL '1 month')
-    GROUP BY v.periodo
-    ORDER BY v.periodo;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION gasto_por_categoria(p_usuario_id INTEGER, p_anio INTEGER, p_mes INTEGER)
-RETURNS TABLE (categoria VARCHAR, color_hex VARCHAR, icono VARCHAR, total NUMERIC) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT v.categoria, v.color_hex, v.icono, SUM(v.monto)
-    FROM v_movimientos v
-    WHERE v.usuario_id = p_usuario_id AND v.tipo = 'GASTO' AND EXTRACT(YEAR FROM v.fecha) = p_anio AND EXTRACT(MONTH FROM v.fecha) = p_mes
-    GROUP BY v.categoria, v.color_hex, v.icono
-    ORDER BY total DESC;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -683,6 +665,40 @@ BEGIN
     END IF;
 
     RETURN v_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Crea todas las deudas de un gasto compartido en una sola llamada (y por lo
+-- tanto una sola transacción del lado del driver HTTP de Neon, que abre una
+-- conexión nueva por cada `sql` tagged template): si el split incluye 5
+-- personas y la cuarta falla, no quedan las primeras 3 cargadas y las 2
+-- últimas afuera. p_personas es un array JSON de {persona_nombre, monto}.
+CREATE OR REPLACE FUNCTION crear_deudas_compartidas(
+    p_usuario_id     INTEGER,
+    p_movimiento_id  INTEGER,
+    p_descripcion    VARCHAR,
+    p_fecha          DATE,
+    p_personas       JSONB
+) RETURNS VOID AS $$
+DECLARE
+    v_persona JSONB;
+BEGIN
+    FOR v_persona IN SELECT * FROM jsonb_array_elements(p_personas)
+    LOOP
+        IF TRIM(COALESCE(v_persona->>'persona_nombre', '')) = '' OR (v_persona->>'monto') IS NULL THEN
+            CONTINUE;
+        END IF;
+
+        PERFORM crear_deuda(
+            p_usuario_id,
+            v_persona->>'persona_nombre',
+            'ME_DEBEN',
+            (v_persona->>'monto')::NUMERIC,
+            p_descripcion,
+            p_fecha,
+            p_movimiento_id
+        );
+    END LOOP;
 END;
 $$ LANGUAGE plpgsql;
 

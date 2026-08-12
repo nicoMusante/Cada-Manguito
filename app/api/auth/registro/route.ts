@@ -26,6 +26,10 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      await registrarIntentoFallido(`registro:${ip}`);
+      return NextResponse.json({ error: "El email no es válido." }, { status: 400 });
+    }
     if (password.length < 8) {
       await registrarIntentoFallido(`registro:${ip}`);
       return NextResponse.json({ error: "La contraseña tiene que tener al menos 8 caracteres." }, { status: 400 });
