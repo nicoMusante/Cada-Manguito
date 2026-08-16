@@ -3,6 +3,10 @@
 // hasta 2 decimales — separado así porque el resto de la app ya usa "," como
 // decimal y "." como miles (es-AR), pero durante la carga se tipea en crudo.
 
+// tope de la columna numeric(14,2) en la base: 12 dígitos enteros + 2 decimales.
+// lo valido acá para no depender del 500 genérico que tira postgres si se supera.
+export const MONTO_MAXIMO = 999999999999.99;
+
 export function formatMontoInput(raw: string, permitirDecimales: boolean): string {
   const limpio = permitirDecimales ? raw.replace(/[^0-9,]/g, "") : raw.replace(/[^0-9]/g, "");
   const [enteroCrudo, ...resto] = limpio.split(",");

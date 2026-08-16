@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getUsuarioId, noAutenticado } from "@/lib/auth";
 import { demasiadasRequests, demasiadasPeticiones } from "@/lib/rateLimit";
+import { MONTO_MAXIMO } from "@/lib/formatMonto";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -44,6 +45,9 @@ export async function POST(request: Request) {
         { error: "Faltan campos requeridos: categoria_id, descripcion, monto" },
         { status: 400 }
       );
+    }
+    if (monto > MONTO_MAXIMO) {
+      return NextResponse.json({ error: "El monto es demasiado grande." }, { status: 400 });
     }
 
     const rows = await sql`

@@ -6,7 +6,7 @@ import {
   PieChart, Pie, Cell, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { SlidersHorizontal, X, PieChart as PieChartIcon, ListOrdered, CalendarDays } from "lucide-react";
+import { SlidersHorizontal, X, PieChart as PieChartIcon, CalendarDays } from "lucide-react";
 import { fmt, type Movimiento, type CategoriaConId } from "@/lib/mockData";
 import { CategoriaChipBar } from "@/components/CategoriaChipBar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -225,9 +225,8 @@ export function GraficosView({
       <div className="px-5 lg:px-0 mt-4">
         {loading ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Skeleton className="h-[254px] lg:h-[294px] rounded-xl" />
-            <Skeleton className="h-[254px] lg:h-[294px] rounded-xl" />
-            <Skeleton className="h-[254px] lg:h-[284px] rounded-xl lg:col-span-2" />
+            <Skeleton className="h-[364px] lg:h-[404px] rounded-xl" />
+            <Skeleton className="h-[254px] lg:h-[284px] rounded-xl" />
           </div>
         ) : !hayDatos ? (
           <p className="text-[12.5px] text-muted-foreground">No hay gastos que coincidan con estos filtros.</p>
@@ -280,35 +279,6 @@ export function GraficosView({
             </Card>
 
             <Card className="border-none shadow-sm bg-secondary">
-              <CardContent className="p-4 lg:p-5">
-                <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground mb-4">
-                  <ListOrdered size={14} className="text-muted-foreground" /> Ranking de categorías
-                </p>
-                <div className="h-[190px] lg:h-[230px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={porCategoria} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 0 }} barCategoryGap="30%">
-                      <XAxis type="number" hide />
-                      <YAxis
-                        type="category"
-                        dataKey="nombre"
-                        width={88}
-                        tickLine={false}
-                        axisLine={false}
-                        tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                      />
-                      <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted))" }} />
-                      <Bar dataKey="total" radius={[0, 6, 6, 0]} maxBarSize={14}>
-                        {porCategoria.map((c) => (
-                          <Cell key={String(c.id)} fill={c.color} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-none shadow-sm bg-secondary lg:col-span-2">
               <CardContent className="p-4 lg:p-5">
                 <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground mb-4">
                   <CalendarDays size={14} className="text-muted-foreground" /> Por día

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { X, Check, Trash2 } from "lucide-react";
 import { type CategoriaConId, type CategoriaRow, type Movimiento, mapCategoria } from "@/lib/mockData";
-import { formatMontoInput, parseMontoInput, numberToMontoDisplay } from "@/lib/formatMonto";
+import { formatMontoInput, parseMontoInput, numberToMontoDisplay, MONTO_MAXIMO } from "@/lib/formatMonto";
 import { type Cotizacion } from "@/lib/dolar";
 import { Button } from "@/components/ui/button";
 import { CategoriaModal } from "@/components/CategoriaModal";
@@ -152,6 +152,7 @@ export function MovimientoModal({
     if (moneda === "USD" && !cotizacion?.venta) return setError("No se pudo obtener la cotización. Probá de nuevo en un momento.");
 
     const montoArs = moneda === "USD" ? montoNum * cotizacion!.venta : montoNum;
+    if (montoArs > MONTO_MAXIMO) return setError("El monto es demasiado grande.");
 
     setEnviando(true);
     try {
@@ -330,12 +331,12 @@ export function MovimientoModal({
               <div>
                 <div className="flex items-center justify-between gap-2">
                   <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Monto</label>
-                  <div className="flex rounded-full p-0.5 bg-secondary shrink-0">
+                  <div className="flex rounded-full p-1 bg-secondary shrink-0 border border-border">
                     <button
                       type="button"
                       onClick={() => handleMonedaChange("ARS")}
-                      className={`px-1.5 py-0.5 rounded-full text-[9.5px] font-medium transition ${
-                        moneda === "ARS" ? "bg-card text-foreground" : "text-muted-foreground"
+                      className={`px-2.5 py-1 rounded-full text-[11.5px] font-semibold transition ${
+                        moneda === "ARS" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"
                       }`}
                     >
                       $
@@ -343,8 +344,8 @@ export function MovimientoModal({
                     <button
                       type="button"
                       onClick={() => handleMonedaChange("USD")}
-                      className={`px-1.5 py-0.5 rounded-full text-[9.5px] font-medium transition ${
-                        moneda === "USD" ? "bg-card text-foreground" : "text-muted-foreground"
+                      className={`px-2.5 py-1 rounded-full text-[11.5px] font-semibold transition ${
+                        moneda === "USD" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"
                       }`}
                     >
                       US$

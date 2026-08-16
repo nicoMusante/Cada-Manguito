@@ -29,3 +29,14 @@ export function MonthSwitcher({
     </div>
   );
 }
+
+// mismo alto/padding que MonthSwitcher, para las pestañas que no filtran por
+// mes (Deudas, Fijos) — así el contenedor nunca cambia de altura al pasar de
+// una pestaña con selector de mes a una sin él (evita el salto de layout)
+export function SinFiltroMes({ mensaje }: { mensaje: string }) {
+  return (
+    <div className="flex items-center justify-center px-5 lg:px-0 pt-3 pb-2 lg:pt-4 lg:pb-1">
+      <p className="text-[11px] lg:text-[13px] text-center text-muted-foreground">{mensaje}</p>
+    </div>
+  );
+}

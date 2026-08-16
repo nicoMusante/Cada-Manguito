@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatMontoInput, parseMontoInput, numberToMontoDisplay } from "@/lib/formatMonto";
+import { formatMontoInput, parseMontoInput, numberToMontoDisplay, MONTO_MAXIMO } from "@/lib/formatMonto";
 import type { TipoNuevoSelector } from "@/components/MovimientoModal";
 
 export type DeudaEditable = {
@@ -57,6 +57,7 @@ export function DeudaModal({
     if (!personaNombre.trim()) return setError("Poné el nombre de la persona.");
     if (!descripcion.trim()) return setError("Agregá una descripción.");
     if (!montoNum || montoNum <= 0) return setError("El monto tiene que ser mayor a 0.");
+    if (montoNum > MONTO_MAXIMO) return setError("El monto es demasiado grande.");
 
     setEnviando(true);
     try {

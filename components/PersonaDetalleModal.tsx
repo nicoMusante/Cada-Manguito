@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { X, Check, Trash2, Pencil, Square, CheckSquare, ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { parseFechaLocal } from "@/lib/periodo";
-import { formatMontoInput, parseMontoInput } from "@/lib/formatMonto";
+import { formatMontoInput, parseMontoInput, MONTO_MAXIMO } from "@/lib/formatMonto";
 import { DeudaModal, type DeudaEditable } from "@/components/DeudaModal";
 
 type Pago = { id: number; monto: string; fecha: string };
@@ -137,6 +137,7 @@ export function PersonaDetalleModal({
     setErrorPago(null);
     const montoNum = Number(parseMontoInput(montoPago));
     if (!montoNum || montoNum <= 0) return setErrorPago("El monto tiene que ser mayor a 0.");
+    if (montoNum > MONTO_MAXIMO) return setErrorPago("El monto es demasiado grande.");
 
     setEnviandoPago(true);
     try {

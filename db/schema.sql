@@ -398,6 +398,43 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Edita categoría/descripción/monto/día de un gasto fijo existente. No toca
+-- mes_inicio/cuotas_totales/mes_fin (cuándo arranca y hasta cuándo genera):
+-- cambiar eso a mitad de camino rompería la cuenta de cuotas ya generadas,
+-- así que se mantiene fijo desde que se creó (igual que actualizar_deuda deja
+-- afuera de la edición lo que ya tiene historial encadenado).
+CREATE OR REPLACE FUNCTION actualizar_gasto_fijo(
+    p_usuario_id    INTEGER,
+    p_id            INTEGER,
+    p_categoria_id  INTEGER,
+    p_descripcion   VARCHAR,
+    p_monto         NUMERIC,
+    p_dia_mes       INTEGER
+) RETURNS VOID AS $$
+DECLARE
+    v_tipo    VARCHAR(10);
+    v_activo  BOOLEAN;
+BEGIN
+    SELECT tipo, activo INTO v_tipo, v_activo FROM categorias WHERE id = p_categoria_id AND usuario_id = p_usuario_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'La categoría indicada no existe.';
+    END IF;
+    IF NOT v_activo THEN
+        RAISE EXCEPTION 'La categoría seleccionada está inactiva.';
+    END IF;
+    IF v_tipo != 'GASTO' THEN
+        RAISE EXCEPTION 'Un gasto fijo tiene que usar una categoría de tipo GASTO.';
+    END IF;
+
+    UPDATE gastos_fijos
+    SET categoria_id = p_categoria_id, descripcion = p_descripcion, monto = p_monto, dia_mes = p_dia_mes
+    WHERE id = p_id AND usuario_id = p_usuario_id AND activo = true;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'El gasto fijo indicado no existe.';
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Recorre los gastos fijos activos del usuario y, para cada uno cuyo día del
 -- mes ya llegó y todavía no tiene un movimiento generado en el mes en curso,
 -- crea ese movimiento. Se llama sola desde GET /api/movimientos cuando se
@@ -654,8 +691,7 @@ BEGIN
             p_usuario_id,
             v_categoria_id,
             LEFT(
-                CASE WHEN p_tipo = 'ME_DEBEN' THEN 'Préstamo a ' ELSE 'Préstamo de ' END
-                || TRIM(p_persona_nombre) || ' (' || p_descripcion || ')',
+                TRIM(p_descripcion) || ' (' || CASE WHEN p_tipo = 'ME_DEBEN' THEN 'a ' ELSE 'de ' END || TRIM(p_persona_nombre) || ')',
                 120
             ),
             p_monto,

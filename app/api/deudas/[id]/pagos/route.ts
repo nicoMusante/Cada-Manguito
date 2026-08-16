@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getUsuarioId, noAutenticado } from "@/lib/auth";
 import { demasiadasRequests, demasiadasPeticiones } from "@/lib/rateLimit";
+import { MONTO_MAXIMO } from "@/lib/formatMonto";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const monto = Number(body?.monto);
     if (!monto || monto <= 0) {
       return NextResponse.json({ error: "El monto tiene que ser mayor a 0." }, { status: 400 });
+    }
+    if (monto > MONTO_MAXIMO) {
+      return NextResponse.json({ error: "El monto es demasiado grande." }, { status: 400 });
     }
 
     await sql`SELECT pagar_movimiento(${usuarioId}, ${id}, ${monto})`;

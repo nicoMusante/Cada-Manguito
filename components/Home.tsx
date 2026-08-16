@@ -11,7 +11,7 @@ import {
   type GastoFijo, type GastoFijoRow,
 } from "@/lib/mockData";
 import { Header } from "@/components/Header";
-import { MonthSwitcher } from "@/components/MonthSwitcher";
+import { MonthSwitcher, SinFiltroMes } from "@/components/MonthSwitcher";
 import { ResumenView } from "@/components/ResumenView";
 import { MovimientosView } from "@/components/MovimientosView";
 import { GraficosView } from "@/components/GraficosView";
@@ -25,13 +25,18 @@ import { DeudaModal } from "@/components/DeudaModal";
 import { GastoFijoModal } from "@/components/GastoFijoModal";
 import { PersonaDetalleModal } from "@/components/PersonaDetalleModal";
 import { AjustesModal } from "@/components/AjustesModal";
-import { MobileShell, SWIPE_EASE } from "@/components/MobileShell";
+import { MobileShell } from "@/components/MobileShell";
 import { periodoActual, sumarMeses, formatPeriodoLabel } from "@/lib/periodo";
 
 type ModalState =
   | { mode: "closed" }
   | { mode: "new"; tipo: "movimiento" | "deuda" }
   | { mode: "edit"; movimiento: Movimiento };
+
+type GastoFijoModalState =
+  | { mode: "closed" }
+  | { mode: "new" }
+  | { mode: "edit"; gastoFijo: GastoFijo };
 
 const TAB_IDS = TABS.map((t) => t.id) as TabId[];
 
@@ -60,7 +65,7 @@ export function Home({
   const [loadingGastosFijos, setLoadingGastosFijos] = useState(true);
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
   const [categoriaModalAbierta, setCategoriaModalAbierta] = useState(false);
-  const [gastoFijoModalAbierto, setGastoFijoModalAbierto] = useState(false);
+  const [gastoFijoModal, setGastoFijoModal] = useState<GastoFijoModalState>({ mode: "closed" });
   const [ajustesModalAbierto, setAjustesModalAbierto] = useState(false);
   const [personaDetalleId, setPersonaDetalleId] = useState<number | null>(null);
 
@@ -260,7 +265,8 @@ export function Home({
       gastosFijos={gastosFijos}
       loading={loadingGastosFijos}
       onEliminar={handleEliminarGastoFijo}
-      onNuevo={() => setGastoFijoModalAbierto(true)}
+      onEditar={(g) => setGastoFijoModal({ mode: "edit", gastoFijo: g })}
+      onNuevo={() => setGastoFijoModal({ mode: "new" })}
       cotizacion={cotizacion}
     />
   );
@@ -281,36 +287,28 @@ export function Home({
     fijos: "Gastos fijos",
   };
 
-  // sólo estas pestañas quedan acotadas a un mes — Personas y Fijos no.
-  // lo mantengo siempre montado (nunca hago unmount condicional) y animo su
-  // colapso con grid-template-rows + opacity: así, al deslizar entre una
-  // pestaña con mes y una sin mes, se va desapareciendo en sync con el swipe
-  // (0.3s, mismo easing) en vez de saltar de golpe a mitad de la animación
-  const TABS_CON_MES: TabId[] = ["resumen", "movimientos", "graficos"];
-  const mostrarMesSwitcher = TABS_CON_MES.includes(tab);
-  const mesSwitcher = (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateRows: mostrarMesSwitcher ? "1fr" : "0fr",
-        opacity: mostrarMesSwitcher ? 1 : 0,
-        transition: `grid-template-rows 0.3s ${SWIPE_EASE}, opacity 0.22s ${SWIPE_EASE}`,
-      }}
-    >
-      <div className="overflow-hidden">
-        <MonthSwitcher label={periodoLabel} onAnterior={irMesAnterior} onSiguiente={irMesSiguiente} esMesActual={esMesActual} />
-      </div>
-    </div>
-  );
+  // sólo estas pestañas quedan acotadas a un mes — Personas y Fijos no. En
+  // vez de mostrar/ocultar el selector (lo que hacía saltar el alto del
+  // layout al cambiar de pestaña), la franja del mes siempre está montada y
+  // mide lo mismo en las 5: las que no filtran por mes muestran un aviso en
+  // su lugar (SinFiltroMes) en vez de colapsar a 0.
+  const mesSwitcherPorTab: Record<TabId, React.ReactNode> = {
+    resumen: <MonthSwitcher label={periodoLabel} onAnterior={irMesAnterior} onSiguiente={irMesSiguiente} esMesActual={esMesActual} />,
+    movimientos: <MonthSwitcher label={periodoLabel} onAnterior={irMesAnterior} onSiguiente={irMesSiguiente} esMesActual={esMesActual} />,
+    graficos: <MonthSwitcher label={periodoLabel} onAnterior={irMesAnterior} onSiguiente={irMesSiguiente} esMesActual={esMesActual} />,
+    personas: <SinFiltroMes mensaje="Las deudas no se filtran por mes." />,
+    fijos: <SinFiltroMes mensaje="Los gastos fijos no se filtran por mes." />,
+  };
+  const mesSwitcher = mesSwitcherPorTab[tab];
 
   const abrirNuevo = () => {
-    if (tab === "fijos") { setGastoFijoModalAbierto(true); return; }
+    if (tab === "fijos") { setGastoFijoModal({ mode: "new" }); return; }
     setModal({ mode: "new", tipo: tab === "personas" ? "deuda" : "movimiento" });
   };
 
   const modalAbierto =
     modal.mode !== "closed" || categoriaModalAbierta ||
-    gastoFijoModalAbierto || ajustesModalAbierto || personaDetalleId !== null;
+    gastoFijoModal.mode !== "closed" || ajustesModalAbierto || personaDetalleId !== null;
 
   return (
     <main className="min-h-screen bg-background">
@@ -330,10 +328,7 @@ export function Home({
               header={
                 <Header title={titles[tab]} themeName={themeName} usuario={usuario} onToggleModo={handleToggleModo} onOpenAjustes={() => setAjustesModalAbierto(true)} />
               }
-              monthSwitcher={
-                <MonthSwitcher label={periodoLabel} onAnterior={irMesAnterior} onSiguiente={irMesSiguiente} esMesActual={esMesActual} />
-              }
-              hasMonth={TAB_IDS.map((id) => TABS_CON_MES.includes(id))}
+              monthSwitchers={TAB_IDS.map((id) => mesSwitcherPorTab[id])}
               index={TAB_IDS.indexOf(tab)}
               onIndexChange={(i) => setTab(TAB_IDS[i])}
               disabled={modalAbierto}
@@ -382,8 +377,12 @@ export function Home({
         />
       )}
 
-      {gastoFijoModalAbierto && (
-        <GastoFijoModal onClose={() => setGastoFijoModalAbierto(false)} onSaved={alGuardarGastoFijo} />
+      {gastoFijoModal.mode !== "closed" && (
+        <GastoFijoModal
+          gastoFijo={gastoFijoModal.mode === "edit" ? gastoFijoModal.gastoFijo : null}
+          onClose={() => setGastoFijoModal({ mode: "closed" })}
+          onSaved={alGuardarGastoFijo}
+        />
       )}
 
       {ajustesModalAbierto && (

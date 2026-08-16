@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getUsuarioId, noAutenticado } from "@/lib/auth";
 import { demasiadasRequests, demasiadasPeticiones } from "@/lib/rateLimit";
+import { MONTO_MAXIMO } from "@/lib/formatMonto";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     if (monto == null || !tipo) {
       return NextResponse.json({ error: "Faltan campos requeridos: monto, tipo" }, { status: 400 });
+    }
+    if (monto > MONTO_MAXIMO) {
+      return NextResponse.json({ error: "El monto es demasiado grande." }, { status: 400 });
     }
     if (tipo !== "GASTO" && tipo !== "INGRESO") {
       return NextResponse.json({ error: "tipo debe ser GASTO o INGRESO" }, { status: 400 });

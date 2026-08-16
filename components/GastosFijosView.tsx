@@ -8,17 +8,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { periodoActual, formatPeriodoLabel } from "@/lib/periodo";
 
 export function GastosFijosView({
-  gastosFijos, loading, onEliminar, onNuevo, cotizacion,
+  gastosFijos, loading, onEliminar, onEditar, onNuevo, cotizacion,
 }: {
   gastosFijos: GastoFijo[];
   loading: boolean;
   onEliminar: (id: number) => void;
+  onEditar: (g: GastoFijo) => void;
   onNuevo: () => void;
   cotizacion?: Cotizacion | null;
 }) {
   const total = gastosFijos.reduce((acc, g) => acc + g.monto, 0);
 
-  function handleEliminar(g: GastoFijo) {
+  function handleEliminar(e: React.MouseEvent, g: GastoFijo) {
+    e.stopPropagation();
     if (confirm(`¿Eliminar el gasto fijo "${g.desc}"?`)) onEliminar(g.id);
   }
 
@@ -52,7 +54,11 @@ export function GastosFijosView({
             const empiezaEnElFuturo = g.mesInicio > periodoActual();
             const cuotaActual = Math.min(g.cuotasGeneradas + 1, g.cuotasTotales ?? Infinity);
             return (
-              <Card key={g.id} className="border-none shadow-sm bg-secondary">
+              <Card
+                key={g.id}
+                onClick={() => onEditar(g)}
+                className="border-none shadow-sm bg-secondary cursor-pointer active:opacity-70 transition"
+              >
                 <CardContent className="p-3 flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: g.color + "22" }}>
                     <g.icon size={15} style={{ color: g.color }} />
@@ -71,7 +77,7 @@ export function GastosFijosView({
                       <p className="text-[9.5px] text-muted-foreground tabular-nums">{formatUSD(g.monto, cotizacion ?? null)}</p>
                     )}
                   </div>
-                  <button onClick={() => handleEliminar(g)} className="shrink-0" aria-label="Eliminar">
+                  <button onClick={(e) => handleEliminar(e, g)} className="shrink-0" aria-label="Eliminar">
                     <Trash2 size={13} className="text-muted-foreground" />
                   </button>
                 </CardContent>
