@@ -2,6 +2,15 @@
 
 Ver protocolo de uso de este archivo en CLAUDE.md → "Tareas pendientes entre sesiones".
 
+## Idea futura: pestaña de Inversiones (2026-08-16)
+
+- [ ] **Nueva solapa "Inversiones"**: sin empezar, el usuario todavía no definió qué quiere mostrar ahí. Antes de tocar código, indagar con el usuario (no asumir):
+  1. **Qué son las inversiones acá**: ¿plazo fijo, dólares/cripto guardados, acciones/CEDEARs, fondos, o una mezcla? De esto depende si alcanza con un monto + variación manual o si hace falta traer una cotización externa (como ya se hace con `dolarapi.com` en `lib/dolar.ts`).
+  2. **Carga manual vs. automática**: ¿el usuario tipea cuánto tiene invertido y en qué, o se espera que la app calcule rendimiento solo a partir de alguna API externa?
+  3. **Relación con el resto de la app**: ¿las inversiones suman/restan del resumen general (`ResumenView`), o es una sección aislada que sólo informa, sin tocar los totales de ingresos/gastos?
+  4. **Modelo de datos**: probablemente una tabla nueva (`inversiones` o similar, con `usuario_id`) — recién definirla una vez resueltos los puntos de arriba, siguiendo el patrón del resto del esquema (función PL/pgSQL + ruta fina en `app/api/`, ver Arquitectura en `CLAUDE.md`).
+  5. Si mete tab nueva, recordar: agregarla a `TABS` en `components/BottomNav.tsx` (compartido con `Sidebar.tsx`), sumar el panel correspondiente en `components/Home.tsx` (`resumenPanel`, etc.), y contemplar mobile + desktop desde el vamos (ver sección "UI: mobile primero, pero siempre los dos" en `CLAUDE.md`).
+
 ## Pedido 2026-08-16 (b)
 
 - [x] **Gráficos con el look del mockup elegido (opción A · Simplificado)**: donut con el total en `$22-26px` centrado, leyenda con filas separadas por `border-b`, y "Por día" pasó de `BarChart` a `AreaChart` con gradiente (`hsl(var(--expense))` con opacidad decreciente vía `<linearGradient>`) en `components/GraficosView.tsx`. Probado con datos reales contra un usuario de prueba en Neon.
