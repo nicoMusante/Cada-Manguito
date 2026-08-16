@@ -12,8 +12,8 @@ export function Sidebar({ active, onChange }: { active: TabId; onChange: (id: Ta
           <button
             key={tab.id}
             onClick={() => onChange(tab.id)}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-medium transition ${
-              isActive ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
+            className={`flex items-center gap-3 rounded-full px-3.5 py-2.5 text-[13.5px] font-medium transition-colors duration-200 ${
+              isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <tab.icon size={16} />

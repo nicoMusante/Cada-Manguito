@@ -2,6 +2,20 @@
 
 Ver protocolo de uso de este archivo en CLAUDE.md → "Tareas pendientes entre sesiones".
 
+## Pedido 2026-08-16 (b)
+
+- [x] **Gráficos con el look del mockup elegido (opción A · Simplificado)**: donut con el total en `$22-26px` centrado, leyenda con filas separadas por `border-b`, y "Por día" pasó de `BarChart` a `AreaChart` con gradiente (`hsl(var(--expense))` con opacidad decreciente vía `<linearGradient>`) en `components/GraficosView.tsx`. Probado con datos reales contra un usuario de prueba en Neon.
+- [x] **Saludo dinámico según hora de Argentina**: `saludoActualAr()` en `lib/periodo.ts` (Buenos días 6-12, Buenas tardes 12-19, Buenas noches resto), usado en `components/Header.tsx:54`. Ancla a `America/Argentina/Buenos_Aires` vía `Intl.DateTimeFormat`, no a la hora del dispositivo. Probado: mostró "Buenos días" correctamente en la corrida de prueba.
+- [ ] **Bot de WhatsApp para anotar movimientos**: sin empezar. La idea del usuario (2026-08-16): un bot que lea los mensajes de un chat de WhatsApp y anote movimientos en la app a partir de eso — el usuario mandó explícitamente que se "indague" el resto al momento de encarar la tarea, no quedó definido de antemano. Investigar/decidir en esa sesión, en este orden (cada decisión condiciona la siguiente):
+  1. **Vínculo cuenta↔número de WhatsApp**: cómo se asocia el número de quien escribe con un `usuarios.id` existente — ¿flag `whatsapp_numero` en `usuarios` que se carga desde `AjustesModal`, con un código de verificación tipo el flujo de recuperación de contraseña? Sin esto no hay forma de saber a qué cuenta pertenece el mensaje.
+  2. **Canal técnico**: WhatsApp Business Platform (Meta Cloud API, gratis hasta cierto volumen, requiere Meta Business verificado) vs. un intermediario (Twilio WhatsApp API, más simple de arrancar pero de pago desde el mensaje 1). Definir cuál, y dónde vive el webhook — nueva ruta en `app/api/whatsapp/` recibiendo el POST del proveedor.
+  3. **Formato del mensaje**: texto libre en lenguaje natural ("gasté 500 en comida") vs. comando corto fijo (`/gasto 500 comida`). Texto libre es más cómodo pero exige parsearlo.
+  4. **Categorización**: si el formato es libre, ¿un LLM (API de Anthropic — ver skill `claude-api`) resuelve tipo/monto/categoría/descripción a partir del texto? Si es comando fijo, alcanza con un parser simple sin costo de LLM ni latencia extra. Ver qué tan tolerante a ambigüedad quiere el usuario (ej. "compré unas zapatillas 45000" sin nombrar la categoría — ¿el bot elige la más parecida entre las categorías del usuario, o pregunta?).
+  5. **Confirmación**: ¿el bot responde por WhatsApp confirmando lo que anotó (y da tiempo a corregir/cancelar antes de guardar), o guarda directo y listo? Los otros flujos de la app siempre muestran preview antes de confirmar (ver `MovimientoModal`) — probablemente conviene mantener esa idea acá también.
+  6. Encaja con la arquitectura actual (`insertar_movimiento`, `getUsuarioId`) una vez resuelto 1-5 — no debería requerir tocar la lógica de negocio en Postgres, sólo una ruta nueva que llegue a `insertar_movimiento` con los datos ya resueltos.
+
+Probado en 2 usuarios de prueba (`qa-test-*@example.com`) contra Neon vía Playwright headless — quedan esas filas en la base, inofensivas, se pueden borrar a mano.
+
 ## Migraciones sin correr en Neon
 
 - [x] `db/migracion_edicion_gastos_fijos.sql` — corrida contra Neon (verificado `actualizar_gasto_fijo` existe y `crear_deuda` quedó con la firma de 8 params).

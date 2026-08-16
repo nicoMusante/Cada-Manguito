@@ -21,6 +21,25 @@ export function periodoActualAr(): string {
   return `${anio}-${mes}`;
 }
 
+// saludo del header de Resumen según la hora de Argentina (no la del
+// dispositivo): mañana 6-12, tarde 12-19, noche 19-6 — mismo motivo que
+// periodoActualAr(), un usuario en otro huso vería el saludo del huso local
+// de su celular en vez del de Argentina si usara new Date().getHours() a secas
+export function saludoActualAr(): string {
+  // hour12: false a veces devuelve "24" en vez de "0" para la medianoche
+  // (quirk conocido de ICU) — % 24 lo deja en rango
+  const hora = Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Argentina/Buenos_Aires",
+      hour: "numeric",
+      hour12: false,
+    }).format(new Date())
+  ) % 24;
+  if (hora >= 6 && hora < 12) return "Buenos días";
+  if (hora >= 12 && hora < 19) return "Buenas tardes";
+  return "Buenas noches";
+}
+
 export function sumarMeses(periodo: string, delta: number): string {
   const [anio, mes] = periodo.split("-").map(Number);
   const fecha = new Date(anio, mes - 1 + delta, 1);

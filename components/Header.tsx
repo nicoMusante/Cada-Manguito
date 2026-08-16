@@ -3,6 +3,7 @@
 import { signOut } from "next-auth/react";
 import { ChevronLeft, Sun, Moon, Settings, LogOut } from "lucide-react";
 import { THEME_MODE, type ThemeName } from "@/lib/theme";
+import { saludoActualAr } from "@/lib/periodo";
 import { Button } from "@/components/ui/button";
 
 // barra de sol/luna: cambia entre claro y oscuro sin tocar la gama de
@@ -50,7 +51,7 @@ export function Header({
               👋
             </div>
             <div>
-              <p className="text-[11.5px] lg:text-[13px] text-muted-foreground">Buenas tardes</p>
+              <p className="text-[11.5px] lg:text-[13px] text-muted-foreground">{saludoActualAr()}</p>
               <p className="text-[14px] lg:text-[18px] font-semibold text-foreground">{usuario.nombre}</p>
             </div>
           </div>

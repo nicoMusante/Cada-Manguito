@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  PieChart, Pie, Cell, BarChart, Bar,
+  PieChart, Pie, Cell, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { SlidersHorizontal, X, PieChart as PieChartIcon, CalendarDays } from "lucide-react";
@@ -237,17 +237,17 @@ export function GraficosView({
                 <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground mb-4">
                   <PieChartIcon size={14} className="text-muted-foreground" /> Por categoría
                 </p>
-                <div className="relative h-[190px] lg:h-[230px]">
+                <div className="relative h-[210px] lg:h-[250px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={porCategoria}
                         dataKey="total"
                         nameKey="nombre"
-                        innerRadius="58%"
-                        outerRadius="88%"
-                        paddingAngle={3}
-                        cornerRadius={4}
+                        innerRadius="62%"
+                        outerRadius="92%"
+                        paddingAngle={4}
+                        cornerRadius={6}
                         stroke="hsl(var(--secondary))"
                         strokeWidth={3}
                       >
@@ -258,19 +258,19 @@ export function GraficosView({
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-4">
-                    <p className="text-[9.5px] text-muted-foreground text-center">Gastado {hayFiltro ? "(filtrado)" : "este mes"}</p>
-                    <p className="text-[17px] lg:text-[20px] font-bold text-expense tabular-nums text-center">{fmt(totalGastado)}</p>
+                    <p className="text-[9.5px] uppercase tracking-wide text-muted-foreground text-center">Gastado {hayFiltro ? "(filtrado)" : "este mes"}</p>
+                    <p className="text-[22px] lg:text-[26px] font-extrabold text-expense tabular-nums text-center leading-tight">{fmt(totalGastado)}</p>
                   </div>
                 </div>
-                <div className="mt-4 space-y-2">
+                <div className="mt-5 space-y-0.5">
                   {porCategoria.slice(0, 6).map((c) => (
-                    <div key={String(c.id)} className="flex items-center justify-between text-[11.5px]">
-                      <span className="flex items-center gap-1.5 text-muted-foreground min-w-0 truncate">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                    <div key={String(c.id)} className="flex items-center justify-between text-[11.5px] py-1.5 border-b border-border last:border-none">
+                      <span className="flex items-center gap-2 text-foreground font-medium min-w-0 truncate">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
                         <span className="truncate">{c.nombre}</span>
                       </span>
-                      <span className="tabular-nums text-foreground font-medium shrink-0 pl-2">
-                        {fmt(c.total)} · {Math.round((c.total / totalGastado) * 100)}%
+                      <span className="tabular-nums text-foreground font-semibold shrink-0 pl-2">
+                        {fmt(c.total)} <span className="text-muted-foreground font-normal">· {Math.round((c.total / totalGastado) * 100)}%</span>
                       </span>
                     </div>
                   ))}
@@ -285,13 +285,27 @@ export function GraficosView({
                 </p>
                 <div className="h-[190px] lg:h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={porDia} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barCategoryGap="35%">
+                    <AreaChart data={porDia} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
+                      <defs>
+                        <linearGradient id="gradientePorDia" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--expense))" stopOpacity={0.35} />
+                          <stop offset="100%" stopColor="hsl(var(--expense))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
                       <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="3 5" />
                       <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                       <YAxis hide />
-                      <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted))" }} />
-                      <Bar dataKey="total" radius={[4, 4, 0, 0]} fill="hsl(var(--expense))" maxBarSize={28} />
-                    </BarChart>
+                      <Tooltip content={<ChartTooltip />} cursor={{ stroke: "hsl(var(--expense))", strokeWidth: 1, strokeDasharray: "3 5" }} />
+                      <Area
+                        type="monotone"
+                        dataKey="total"
+                        stroke="hsl(var(--expense))"
+                        strokeWidth={2.5}
+                        fill="url(#gradientePorDia)"
+                        dot={false}
+                        activeDot={{ r: 4.5, fill: "hsl(var(--expense))", stroke: "hsl(var(--secondary))", strokeWidth: 2 }}
+                      />
+                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
