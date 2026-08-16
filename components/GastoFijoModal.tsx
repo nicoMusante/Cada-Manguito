@@ -7,6 +7,7 @@ import { formatMontoInput, parseMontoInput, numberToMontoDisplay, MONTO_MAXIMO }
 import { Button } from "@/components/ui/button";
 import { CategoriaModal } from "@/components/CategoriaModal";
 import { CategoriaSelector } from "@/components/CategoriaSelector";
+import { useModalBackClose } from "@/lib/useModalBackClose";
 
 export function GastoFijoModal({
   gastoFijo,
@@ -18,6 +19,7 @@ export function GastoFijoModal({
   onSaved: () => void;
 }) {
   const esEdicion = !!gastoFijo;
+  useModalBackClose(onClose);
 
   const [categorias, setCategorias] = useState<CategoriaConId[]>([]);
   const [categoriaId, setCategoriaId] = useState<number | null>(gastoFijo?.categoriaId ?? null);
@@ -122,7 +124,6 @@ export function GastoFijoModal({
               onChange={(e) => setDescripcion(e.target.value)}
               placeholder="ej. Alquiler"
               className="w-full mt-1.5 rounded-xl px-3.5 py-2.5 text-[13.5px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
-              autoFocus
             />
           </div>
 
@@ -196,7 +197,6 @@ export function GastoFijoModal({
                     placeholder="Cantidad de cuotas"
                     inputMode="numeric"
                     className="w-full mt-2 rounded-xl px-3.5 py-2.5 text-[13.5px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
-                    autoFocus
                   />
                 )}
               </div>

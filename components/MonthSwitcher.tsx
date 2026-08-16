@@ -8,7 +8,7 @@ export function MonthSwitcher({
   return (
     <div
       data-swipe-ignore
-      className="flex items-center justify-between px-5 lg:px-0 pt-3 pb-2 lg:pt-4 lg:pb-1"
+      className="flex items-center justify-between px-5 lg:px-0 h-9 lg:h-10"
     >
       <button
         onClick={onAnterior}
@@ -35,7 +35,7 @@ export function MonthSwitcher({
 // una pestaña con selector de mes a una sin él (evita el salto de layout)
 export function SinFiltroMes({ mensaje }: { mensaje: string }) {
   return (
-    <div className="flex items-center justify-center px-5 lg:px-0 pt-3 pb-2 lg:pt-4 lg:pb-1">
+    <div className="flex items-center justify-center px-5 lg:px-0 h-9 lg:h-10">
       <p className="text-[11px] lg:text-[13px] text-center text-muted-foreground">{mensaje}</p>
     </div>
   );

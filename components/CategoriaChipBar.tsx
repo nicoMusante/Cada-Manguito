@@ -14,8 +14,10 @@ const ANCHOS_SKELETON = [88, 64, 104, 76];
 // confirmación para siempre
 const MS_AUTOCANCELAR_BORRADO = 4000;
 
-// cantidad de categorías visibles antes de tener que desplegar el resto
-const CAP_CATEGORIAS = 7;
+// cantidad de categorías visibles antes de tener que desplegar el resto —
+// mismo número que CategoriaSelector, para que el límite sea consistente
+// en toda la app
+const CAP_CATEGORIAS = 5;
 
 // barra de chips de categoría reutilizada en Resumen, Movimientos y el panel
 // de filtros de Gráficos. onAddCategoria/onEliminarCategoria son opcionales:

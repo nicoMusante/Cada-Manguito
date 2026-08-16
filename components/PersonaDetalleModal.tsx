@@ -5,6 +5,7 @@ import { X, Check, Trash2, Pencil, Square, CheckSquare, ChevronDown, ChevronUp, 
 import { Button } from "@/components/ui/button";
 import { parseFechaLocal } from "@/lib/periodo";
 import { formatMontoInput, parseMontoInput, MONTO_MAXIMO } from "@/lib/formatMonto";
+import { useModalBackClose } from "@/lib/useModalBackClose";
 import { DeudaModal, type DeudaEditable } from "@/components/DeudaModal";
 
 type Pago = { id: number; monto: string; fecha: string };
@@ -33,6 +34,7 @@ export function PersonaDetalleModal({
   onClose: () => void;
   onChanged: () => void;
 }) {
+  useModalBackClose(onClose);
   const [nombre, setNombre] = useState("");
   const [neto, setNeto] = useState(0);
   const [historial, setHistorial] = useState<DeudaHistorial[]>([]);

@@ -29,6 +29,13 @@ body {
   user-select: none;
 }
 
+/* saco el rectángulo gris/blanco que muestran los navegadores mobile al
+   tocar cualquier elemento (más notorio sobre los paths de los charts de
+   recharts, que no son botones pero igual reciben el highlight nativo) */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
 input, textarea, [contenteditable="true"] {
   -webkit-user-select: text;
   user-select: text;

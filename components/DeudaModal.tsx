@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatMontoInput, parseMontoInput, numberToMontoDisplay, MONTO_MAXIMO } from "@/lib/formatMonto";
+import { useModalBackClose } from "@/lib/useModalBackClose";
 import type { TipoNuevoSelector } from "@/components/MovimientoModal";
 
 export type DeudaEditable = {
@@ -32,6 +33,7 @@ export function DeudaModal({
   tipoSelector?: TipoNuevoSelector; // switch "Movimiento/Deuda" compartido con MovimientoModal, sólo al crear desde el FAB
 }) {
   const esEdicion = !!deuda;
+  useModalBackClose(onClose);
 
   const [tipo, setTipo] = useState<"ME_DEBEN" | "YO_DEBO">(deuda?.tipo ?? "ME_DEBEN");
   const [personaNombre, setPersonaNombre] = useState(deuda?.personaNombre ?? "");
@@ -160,7 +162,6 @@ export function DeudaModal({
               onChange={(e) => setPersonaNombre(e.target.value)}
               placeholder="ej. Fede"
               className="w-full mt-1.5 rounded-xl px-3.5 py-2.5 text-[13.5px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
-              autoFocus
             />
             <p className="text-[10.5px] mt-1 text-muted-foreground">Si es la primera vez, se crea sola.</p>
           </div>

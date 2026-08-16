@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Check } from "lucide-react";
 import { ICONS, ICON_OPTIONS } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
+import { useModalBackClose } from "@/lib/useModalBackClose";
 
 const COLORES = [
   "#2F6F5E", "#B8562F", "#8A6D3B", "#4A5D6B", "#6B4A6B", "#3E6B7A", "#5C7A3E", "#A63E3E",
@@ -17,6 +18,7 @@ export function CategoriaModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  useModalBackClose(onClose);
   const [tipo, setTipo] = useState<"GASTO" | "INGRESO">("GASTO");
   const [nombre, setNombre] = useState("");
   const [color, setColor] = useState(COLORES[0]);
@@ -111,7 +113,6 @@ export function CategoriaModal({
               onChange={(e) => setNombre(e.target.value)}
               placeholder="ej. Transporte"
               className="w-full mt-1.5 rounded-xl px-3.5 py-2.5 text-[13.5px] outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"
-              autoFocus
             />
           </div>
 

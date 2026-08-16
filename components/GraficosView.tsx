@@ -11,6 +11,20 @@ import { fmt, type Movimiento, type CategoriaConId } from "@/lib/mockData";
 import { CategoriaChipBar } from "@/components/CategoriaChipBar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useModalBackClose } from "@/lib/useModalBackClose";
+
+// sólo existe para poder llamar el hook de cierre con "atrás" mientras el
+// panel de filtros está montado, sin romper las reglas de hooks en
+// GraficosView (que sigue montado siempre, con o sin el panel abierto)
+function FiltrosBackClose({ onClose }: { onClose: () => void }) {
+  useModalBackClose(onClose);
+  return null;
+}
+
+// cantidad de categorías individuales que se muestran en la torta de gastos
+// antes de agrupar el resto en una porción "Otros" — así la torta nunca
+// tiene más porciones que nombres en la lista de abajo
+const CAP_CATEGORIAS_TORTA = 5;
 
 // tooltip propio para que los charts respeten el tema activo en vez del
 // fondo blanco que trae recharts por default
@@ -100,6 +114,16 @@ export function GraficosView({
     return [...map.values()].sort((a, b) => b.total - a.total);
   }, [gastosFiltrados, categorias]);
 
+  // agrupo lo que excede el cap en una porción "Otros" para que la torta y
+  // la lista de categorías de abajo siempre muestren la misma cantidad
+  const porCategoriaTorta = useMemo(() => {
+    if (porCategoria.length <= CAP_CATEGORIAS_TORTA) return porCategoria;
+    const visibles = porCategoria.slice(0, CAP_CATEGORIAS_TORTA);
+    const resto = porCategoria.slice(CAP_CATEGORIAS_TORTA);
+    const totalResto = resto.reduce((acc, c) => acc + c.total, 0);
+    return [...visibles, { id: -1, nombre: "Otros", color: "hsl(var(--muted-foreground))", total: totalResto }];
+  }, [porCategoria]);
+
   const porDia = useMemo(() => {
     const map = new Map<string, { fechaISO: string; label: string; total: number }>();
     for (const m of gastosFiltrados) {
@@ -137,6 +161,7 @@ export function GraficosView({
           className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/45 animate-in fade-in-0 duration-200"
           onClick={() => setFiltrosAbiertos(false)}
         >
+          <FiltrosBackClose onClose={() => setFiltrosAbiertos(false)} />
           <div
             className="w-full lg:w-[380px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5 max-h-[85vh] overflow-y-auto bg-card animate-in fade-in-0 slide-in-from-bottom-8 lg:slide-in-from-bottom-0 lg:zoom-in-95 duration-300 ease-out"
             onClick={(e) => e.stopPropagation()}
@@ -241,7 +266,7 @@ export function GraficosView({
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={porCategoria}
+                        data={porCategoriaTorta}
                         dataKey="total"
                         nameKey="nombre"
                         innerRadius="62%"
@@ -251,7 +276,7 @@ export function GraficosView({
                         stroke="hsl(var(--secondary))"
                         strokeWidth={3}
                       >
-                        {porCategoria.map((c) => (
+                        {porCategoriaTorta.map((c) => (
                           <Cell key={String(c.id)} fill={c.color} />
                         ))}
                       </Pie>
@@ -263,7 +288,7 @@ export function GraficosView({
                   </div>
                 </div>
                 <div className="mt-5 space-y-0.5">
-                  {porCategoria.slice(0, 6).map((c) => (
+                  {porCategoriaTorta.map((c) => (
                     <div key={String(c.id)} className="flex items-center justify-between text-[11.5px] py-1.5 border-b border-border last:border-none">
                       <span className="flex items-center gap-2 text-foreground font-medium min-w-0 truncate">
                         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.color }} />

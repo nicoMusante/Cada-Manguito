@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { ChevronDown, Plus } from "lucide-react";
 import type { CategoriaConId } from "@/lib/mockData";
 
-// clip a 3 renglones de chips (~32px cada uno + 8px de gap) hasta que se
-// despliegue el resto a pedido
-const ALTO_3_RENGLONES = 112;
+// cantidad de categorías visibles antes de tener que desplegar el resto —
+// mismo número que CategoriaChipBar, para que el límite sea consistente
+// en toda la app
+const CAP_CATEGORIAS = 5;
 
 export function CategoriaSelector({
   categorias, categoriaId, onSelect, onAgregarNueva,
@@ -17,23 +18,14 @@ export function CategoriaSelector({
   onAgregarNueva: () => void;
 }) {
   const [expandido, setExpandido] = useState(false);
-  const [necesitaExpandir, setNecesitaExpandir] = useState(false);
-  const listaRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (listaRef.current) {
-      setNecesitaExpandir(listaRef.current.scrollHeight > ALTO_3_RENGLONES + 1);
-    }
-  }, [categorias]);
+  const necesitaExpandir = categorias.length > CAP_CATEGORIAS;
+  const visibles = expandido ? categorias : categorias.slice(0, CAP_CATEGORIAS);
 
   return (
     <div>
       <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Categoría</label>
-      <div
-        ref={listaRef}
-        className={`flex gap-2 flex-wrap mt-2 overflow-hidden transition-[max-height] duration-300 ease-out ${expandido ? "max-h-[600px]" : "max-h-[112px]"}`}
-      >
-        {categorias.map((c) => (
+      <div className="flex gap-2 flex-wrap mt-2">
+        {visibles.map((c) => (
           <button
             type="button"
             key={c.id}

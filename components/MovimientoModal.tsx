@@ -8,6 +8,7 @@ import { type Cotizacion } from "@/lib/dolar";
 import { Button } from "@/components/ui/button";
 import { CategoriaModal } from "@/components/CategoriaModal";
 import { CategoriaSelector } from "@/components/CategoriaSelector";
+import { useModalBackClose } from "@/lib/useModalBackClose";
 
 export type TipoNuevoSelector = {
   actual: "movimiento" | "deuda";
@@ -30,6 +31,7 @@ export function MovimientoModal({
   tipoSelector?: TipoNuevoSelector; // switch "Movimiento/Deuda" compartido con DeudaModal, sólo al crear desde el FAB
 }) {
   const esEdicion = !!movimiento;
+  useModalBackClose(onClose);
 
   const [categorias, setCategorias] = useState<CategoriaConId[]>([]);
   const [tipo, setTipo] = useState<"GASTO" | "INGRESO">(movimiento?.tipo === "in" ? "INGRESO" : "GASTO");

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, X, Palette, DollarSign, ChevronDown, Download } from "lucide-react";
 import { THEME_LABELS, THEME_SWATCHES, THEME_FAMILIES, THEME_MODE, type ThemeName } from "@/lib/theme";
 import { DOLAR_LABELS, type DolarTipo } from "@/lib/dolar";
+import { useModalBackClose } from "@/lib/useModalBackClose";
 
 const DOLARES = Object.keys(DOLAR_LABELS) as DolarTipo[];
 
@@ -54,6 +55,7 @@ export function AjustesModal({
   onSelectDolar: (tipo: DolarTipo) => void;
   onClose: () => void;
 }) {
+  useModalBackClose(onClose);
   const modoActual = THEME_MODE[temaActual];
   const [seccionAbierta, setSeccionAbierta] = useState<Seccion | null>(null);
 
