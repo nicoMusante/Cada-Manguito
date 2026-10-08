@@ -22,6 +22,7 @@ export function MovimientoModal({
   onSaved,
   onCategoriaCreada,
   tipoSelector,
+  usaHistorial = true,
 }: {
   movimiento?: Movimiento | null; // si viene, es modo edición
   cotizacion?: Cotizacion | null;
@@ -29,9 +30,10 @@ export function MovimientoModal({
   onSaved: () => void;
   onCategoriaCreada?: () => void;
   tipoSelector?: TipoNuevoSelector; // switch "Movimiento/Deuda" compartido con DeudaModal, sólo al crear desde el FAB
+  usaHistorial?: boolean;
 }) {
   const esEdicion = !!movimiento;
-  useModalBackClose(onClose);
+  useModalBackClose(onClose, usaHistorial);
 
   const [categorias, setCategorias] = useState<CategoriaConId[]>([]);
   const [tipo, setTipo] = useState<"GASTO" | "INGRESO">(movimiento?.tipo === "in" ? "INGRESO" : "GASTO");

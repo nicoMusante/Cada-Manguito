@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Plus, X, Check } from "lucide-react";
+import { ChevronDown, Plus, X, Trash2 } from "lucide-react";
 import type { CategoriaConId } from "@/lib/mockData";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 // rectángulos idénticos mientras esperamos el GET de categorías
 const ANCHOS_SKELETON = [88, 64, 104, 76];
 
-const MS_MANTENER_PARA_BORRAR = 650;
+const MS_MANTENER_PARA_BORRAR = 400;
 
 // cuánto tiempo queda "armada" la confirmación de borrado antes de cancelarse
 // sola, para que un toque accidental en la x no deje el chip pidiendo
@@ -138,20 +138,20 @@ export function CategoriaChipBar({
               </button>
               {onEliminarCategoria && (
                 confirmando ? (
-                  <span className="flex items-center gap-1 shrink-0">
+                  <span className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => confirmarEliminar(c.id)}
-                      className="w-4 h-4 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: "rgba(255,255,255,0.3)" }}
+                      className="flex items-center gap-1 rounded-full px-2 py-1 text-[10.5px] font-medium"
+                      style={{ backgroundColor: "rgba(255,255,255,0.25)" }}
                       aria-label={`Confirmar eliminar categoría ${c.name}`}
                     >
-                      <Check size={9} />
+                      <Trash2 size={11} /> Eliminar
                     </button>
                     <button
                       type="button"
                       onClick={() => setConfirmarEliminarId(null)}
-                      className="w-4 h-4 rounded-full flex items-center justify-center"
+                      className="w-6 h-6 rounded-full flex items-center justify-center"
                       style={{ backgroundColor: "rgba(255,255,255,0.3)" }}
                       aria-label="Cancelar"
                     >

@@ -27,6 +27,7 @@ import { PersonaDetalleModal } from "@/components/PersonaDetalleModal";
 import { AjustesModal } from "@/components/AjustesModal";
 import { MobileShell } from "@/components/MobileShell";
 import { periodoActual, sumarMeses, formatPeriodoLabel } from "@/lib/periodo";
+import { useModalBackClose } from "@/lib/useModalBackClose";
 
 type ModalState =
   | { mode: "closed" }
@@ -39,6 +40,11 @@ type GastoFijoModalState =
   | { mode: "edit"; gastoFijo: GastoFijo };
 
 const TAB_IDS = TABS.map((t) => t.id) as TabId[];
+
+function NuevoModal({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+  useModalBackClose(onClose);
+  return <>{children}</>;
+}
 
 export function Home({
   usuario,
@@ -350,33 +356,44 @@ export function Home({
         <Plus size={19} />
       </button>
 
-      {(modal.mode === "edit" || (modal.mode === "new" && modal.tipo === "movimiento")) && (
+      {modal.mode === "edit" && (
         <MovimientoModal
-          movimiento={modal.mode === "edit" ? modal.movimiento : null}
+          movimiento={modal.movimiento}
           cotizacion={cotizacion}
           onClose={() => setModal({ mode: "closed" })}
           onSaved={alGuardarMovimiento}
           onCategoriaCreada={cargarCategorias}
-          tipoSelector={
-            modal.mode === "new"
-              ? { actual: "movimiento", onCambiar: (tipo) => setModal({ mode: "new", tipo }) }
-              : undefined
-          }
         />
+      )}
+
+      {modal.mode === "new" && (
+        <NuevoModal onClose={() => setModal({ mode: "closed" })}>
+          {modal.tipo === "movimiento" ? (
+            <MovimientoModal
+              movimiento={null}
+              cotizacion={cotizacion}
+              onClose={() => setModal({ mode: "closed" })}
+              onSaved={alGuardarMovimiento}
+              onCategoriaCreada={cargarCategorias}
+              tipoSelector={{ actual: "movimiento", onCambiar: (tipo) => setModal({ mode: "new", tipo }) }}
+              usaHistorial={false}
+            />
+          ) : (
+            <DeudaModal
+              cotizacion={cotizacion}
+              onClose={() => setModal({ mode: "closed" })}
+              onSaved={alGuardarMovimiento}
+              tipoSelector={{ actual: "deuda", onCambiar: (tipo) => setModal({ mode: "new", tipo }) }}
+              usaHistorial={false}
+            />
+          )}
+        </NuevoModal>
       )}
 
       {categoriaModalAbierta && (
         <CategoriaModal onClose={() => setCategoriaModalAbierta(false)} onCreated={cargarCategorias} />
       )}
 
-      {modal.mode === "new" && modal.tipo === "deuda" && (
-        <DeudaModal
-          cotizacion={cotizacion}
-          onClose={() => setModal({ mode: "closed" })}
-          onSaved={alGuardarMovimiento}
-          tipoSelector={{ actual: "deuda", onCambiar: (tipo) => setModal({ mode: "new", tipo }) }}
-        />
-      )}
 
       {gastoFijoModal.mode !== "closed" && (
         <GastoFijoModal

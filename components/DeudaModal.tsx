@@ -28,15 +28,17 @@ export function DeudaModal({
   onSaved,
   tipoSelector,
   cotizacion,
+  usaHistorial = true,
 }: {
   deuda?: DeudaEditable | null; // si viene, es modo edición
   onClose: () => void;
   onSaved: () => void;
   tipoSelector?: TipoNuevoSelector; // switch "Movimiento/Deuda" compartido con MovimientoModal, sólo al crear desde el FAB
   cotizacion?: Cotizacion | null;
+  usaHistorial?: boolean;
 }) {
   const esEdicion = !!deuda;
-  useModalBackClose(onClose);
+  useModalBackClose(onClose, usaHistorial);
 
   const [tipo, setTipo] = useState<"ME_DEBEN" | "YO_DEBO">(deuda?.tipo ?? "ME_DEBEN");
   const [personaNombre, setPersonaNombre] = useState(deuda?.personaNombre ?? "");
