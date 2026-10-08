@@ -21,11 +21,6 @@ function FiltrosBackClose({ onClose }: { onClose: () => void }) {
   return null;
 }
 
-// cantidad de categorías individuales que se muestran en la torta de gastos
-// antes de agrupar el resto en una porción "Otros" — así la torta nunca
-// tiene más porciones que nombres en la lista de abajo
-const CAP_CATEGORIAS_TORTA = 5;
-
 // tooltip propio para que los charts respeten el tema activo en vez del
 // fondo blanco que trae recharts por default
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { name?: string; value?: number }[]; label?: string }) {
@@ -114,15 +109,8 @@ export function GraficosView({
     return [...map.values()].sort((a, b) => b.total - a.total);
   }, [gastosFiltrados, categorias]);
 
-  // agrupo lo que excede el cap en una porción "Otros" para que la torta y
-  // la lista de categorías de abajo siempre muestren la misma cantidad
-  const porCategoriaTorta = useMemo(() => {
-    if (porCategoria.length <= CAP_CATEGORIAS_TORTA) return porCategoria;
-    const visibles = porCategoria.slice(0, CAP_CATEGORIAS_TORTA);
-    const resto = porCategoria.slice(CAP_CATEGORIAS_TORTA);
-    const totalResto = resto.reduce((acc, c) => acc + c.total, 0);
-    return [...visibles, { id: -1, nombre: "Otros", color: "hsl(var(--muted-foreground))", total: totalResto }];
-  }, [porCategoria]);
+  //muestro cada categoría por separado: "Otros" escondía información útil.
+  const porCategoriaTorta = porCategoria;
 
   const porDia = useMemo(() => {
     const map = new Map<string, { fechaISO: string; label: string; total: number }>();

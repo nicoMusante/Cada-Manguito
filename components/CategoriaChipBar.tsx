@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 // rectángulos idénticos mientras esperamos el GET de categorías
 const ANCHOS_SKELETON = [88, 64, 104, 76];
 
+const MS_MANTENER_PARA_BORRAR = 650;
+
 // cuánto tiempo queda "armada" la confirmación de borrado antes de cancelarse
 // sola, para que un toque accidental en la x no deje el chip pidiendo
 // confirmación para siempre
@@ -30,8 +32,8 @@ export function CategoriaChipBar({
   categorias: CategoriaConId[];
   seleccionadas: Set<number>;
   sinCategoria: boolean;
-  onToggleCategoria: (id: number) => void;
-  onToggleSinCategoria: () => void;
+  onToggleCategoria?: (id: number) => void;
+  onToggleSinCategoria?: () => void;
   onAddCategoria?: () => void;
   onEliminarCategoria?: (id: number) => void;
   loading?: boolean;
@@ -39,6 +41,23 @@ export function CategoriaChipBar({
   const [confirmarEliminarId, setConfirmarEliminarId] = useState<number | null>(null);
   const [expandido, setExpandido] = useState(false);
   const chipConfirmandoRef = useRef<HTMLDivElement | null>(null);
+  const mantenerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const evitarClickRef = useRef<number | null>(null);
+
+  function cancelarMantener() {
+    if (mantenerTimerRef.current) clearTimeout(mantenerTimerRef.current);
+    mantenerTimerRef.current = null;
+  }
+
+  function empezarMantener(id: number) {
+    if (!onEliminarCategoria) return;
+    cancelarMantener();
+    mantenerTimerRef.current = setTimeout(() => {
+      evitarClickRef.current = id;
+      setConfirmarEliminarId(id);
+      mantenerTimerRef.current = null;
+    }, MS_MANTENER_PARA_BORRAR);
+  }
 
   useEffect(() => {
     if (confirmarEliminarId === null) return;
@@ -97,10 +116,21 @@ export function CategoriaChipBar({
               <span className="chip-etiqueta-agujero" />
               <button
                 type="button"
-                onClick={() => onToggleCategoria(c.id)}
+                onClick={() => {
+                  if (evitarClickRef.current === c.id) {
+                    evitarClickRef.current = null;
+                    return;
+                  }
+                  onToggleCategoria?.(c.id);
+                }}
+                onPointerDown={() => empezarMantener(c.id)}
+                onPointerUp={cancelarMantener}
+                onPointerLeave={cancelarMantener}
+                onPointerCancel={cancelarMantener}
                 disabled={confirmando}
                 aria-pressed={seleccionada}
                 aria-label={`Filtrar por ${c.name}`}
+                title={onEliminarCategoria ? "Mantené apretada para eliminar" : undefined}
                 className="flex items-center gap-1.5"
               >
                 <c.icon size={13} />
@@ -128,17 +158,7 @@ export function CategoriaChipBar({
                       <X size={9} />
                     </button>
                   </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmarEliminarId(c.id)}
-                    className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: "rgba(255,255,255,0.25)" }}
-                    aria-label={`Eliminar categoría ${c.name}`}
-                  >
-                    <X size={9} />
-                  </button>
-                )
+                ) : null
               )}
             </div>
           </div>
@@ -156,6 +176,7 @@ export function CategoriaChipBar({
         </button>
       )}
 
+      {onToggleSinCategoria && (
       <button
         type="button"
         onClick={onToggleSinCategoria}
@@ -169,6 +190,7 @@ export function CategoriaChipBar({
       >
         Sin categoría
       </button>
+      )}
 
       {onAddCategoria && (
         <button

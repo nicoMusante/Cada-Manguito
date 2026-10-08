@@ -92,9 +92,6 @@ CREATE TABLE IF NOT EXISTS movimientos (
     -- congelado en ese momento, no se recalcula después.
     moneda         VARCHAR(3)    NOT NULL DEFAULT 'ARS',
     monto_original NUMERIC(14,2),
-    -- puede llegar a 0 si un gasto compartido se cobra por completo (ver
-    -- pagar_movimiento/saldar_persona/saldar_deudas/eliminar_deuda, que
-    -- descuentan de acá la parte ya cobrada de la deuda vinculada)
     CONSTRAINT chk_monto_positivo CHECK (monto >= 0),
     CONSTRAINT chk_movimiento_moneda CHECK (moneda IN ('ARS', 'USD')),
     CONSTRAINT chk_movimiento_tipo CHECK (tipo IN ('INGRESO', 'GASTO')),
@@ -130,15 +127,22 @@ CREATE TABLE IF NOT EXISTS deudas (
     -- opcional: gasto compartido que la originó. ON DELETE CASCADE porque si
     -- se borra el movimiento, las deudas que generó dejan de tener sentido
     movimiento_id  INTEGER REFERENCES movimientos(id) ON DELETE CASCADE,
+    --guardo la moneda original de una deuda en dólares, además del equivalente
+    --en pesos usado por los balances y los movimientos contables.
+    moneda         VARCHAR(3)    NOT NULL DEFAULT 'ARS',
+    monto_original NUMERIC(14,2),
+    movimiento_inicial_id INTEGER REFERENCES movimientos(id) ON DELETE SET NULL,
     saldado_en     TIMESTAMP,
     CONSTRAINT chk_deuda_tipo   CHECK (tipo IN ('ME_DEBEN', 'YO_DEBO')),
     CONSTRAINT chk_deuda_estado CHECK (estado IN ('pendiente', 'saldado')),
     CONSTRAINT chk_deuda_monto  CHECK (monto > 0)
+    ,CONSTRAINT chk_deuda_moneda CHECK (moneda IN ('ARS', 'USD'))
 );
 CREATE INDEX IF NOT EXISTS ix_deudas_persona    ON deudas (persona_id);
 CREATE INDEX IF NOT EXISTS ix_deudas_estado     ON deudas (estado);
 CREATE INDEX IF NOT EXISTS ix_deudas_movimiento ON deudas (movimiento_id);
 CREATE INDEX IF NOT EXISTS ix_deudas_usuario    ON deudas (usuario_id);
+CREATE INDEX IF NOT EXISTS ix_deudas_movimiento_inicial ON deudas (movimiento_inicial_id);
 
 -- Pagos parciales ("cuotas") contra una entrada puntual de deudas. El monto
 -- original de la deuda no se toca nunca: el saldo pendiente de cada entrada
@@ -673,6 +677,7 @@ DECLARE
     v_fecha         DATE;
     v_tipo_mov      VARCHAR(10);
     v_categoria_id  INTEGER;
+    v_movimiento_inicial_id INTEGER;
 BEGIN
     v_persona_id := obtener_o_crear_persona(p_usuario_id, p_persona_nombre);
     v_fecha := COALESCE(p_fecha, hoy_ar());
@@ -697,9 +702,29 @@ BEGIN
             p_monto,
             v_tipo_mov,
             v_fecha
-        );
+        ) RETURNING id INTO v_movimiento_inicial_id;
+        UPDATE deudas SET movimiento_inicial_id = v_movimiento_inicial_id WHERE id = v_id;
     END IF;
 
+    RETURN v_id;
+END;
+$$ LANGUAGE plpgsql;
+
+--acepto dólares sin cambiar el equivalente en pesos que usan las funciones
+--contables heredadas. monto_original conserva el importe pactado.
+CREATE OR REPLACE FUNCTION crear_deuda(
+    p_usuario_id INTEGER, p_persona_nombre VARCHAR, p_tipo VARCHAR,
+    p_monto NUMERIC, p_descripcion VARCHAR, p_fecha DATE,
+    p_movimiento_id INTEGER, p_registrar_movimiento BOOLEAN,
+    p_moneda VARCHAR, p_monto_original NUMERIC
+) RETURNS INTEGER AS $$
+DECLARE v_id INTEGER;
+BEGIN
+    IF p_moneda NOT IN ('ARS', 'USD') OR (p_moneda = 'USD' AND (p_monto_original IS NULL OR p_monto_original <= 0)) THEN
+        RAISE EXCEPTION 'La moneda o el monto en dólares no son válidos.';
+    END IF;
+    v_id := crear_deuda(p_usuario_id, p_persona_nombre, p_tipo, p_monto, p_descripcion, p_fecha, p_movimiento_id, p_registrar_movimiento);
+    UPDATE deudas SET moneda = p_moneda, monto_original = CASE WHEN p_moneda = 'USD' THEN p_monto_original ELSE NULL END WHERE id = v_id;
     RETURN v_id;
 END;
 $$ LANGUAGE plpgsql;
@@ -735,6 +760,25 @@ BEGIN
             p_movimiento_id
         );
     END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+--creo el gasto y las deudas que lo componen dentro de una única transacción.
+CREATE OR REPLACE FUNCTION crear_movimiento_compartido(
+    p_usuario_id INTEGER, p_categoria_id INTEGER, p_descripcion VARCHAR,
+    p_monto NUMERIC, p_tipo VARCHAR, p_fecha DATE, p_moneda VARCHAR,
+    p_monto_original NUMERIC, p_personas JSONB
+) RETURNS INTEGER AS $$
+DECLARE v_movimiento_id INTEGER;
+BEGIN
+    v_movimiento_id := insertar_movimiento(
+        p_usuario_id, p_categoria_id, p_descripcion, p_monto, p_tipo,
+        p_fecha, p_moneda, p_monto_original
+    );
+    PERFORM crear_deudas_compartidas(
+        p_usuario_id, v_movimiento_id, p_descripcion, p_fecha, p_personas
+    );
+    RETURN v_movimiento_id;
 END;
 $$ LANGUAGE plpgsql;
 

@@ -129,17 +129,9 @@ export function mapGastoFijo(row: GastoFijoRow): GastoFijo {
   };
 }
 
-// para movimientos cargados en USD, el equivalente en pesos ya no es fijo:
-// se recalcula en vivo con la cotización actual (así, al cambiar el tipo de
-// dólar en Ajustes, sólo se mueven los montos de lo que se cargó en dólares
-// — lo cargado en pesos es plata ya gastada/cobrada y no varía). Si todavía
-// no cargó la cotización, usa el monto en pesos que quedó guardado al cargar
-// el movimiento, como valor de referencia mientras tanto.
-export function montoEfectivoArs(m: Movimiento, cotizacion: Cotizacion | null): number {
-  if (m.moneda === "USD" && m.montoOriginal != null && cotizacion?.venta) {
-    const equivalente = m.montoOriginal * cotizacion.venta;
-    return m.tipo === "out" ? -equivalente : equivalente;
-  }
+//conservo el equivalente en pesos que existía al guardar el movimiento. así
+//un cambio posterior de cotización no reescribe el balance histórico.
+export function montoEfectivoArs(m: Movimiento, _cotizacion: Cotizacion | null): number {
   return m.monto;
 }
 

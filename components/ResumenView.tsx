@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { TrendingDown, TrendingUp, Clock } from "lucide-react";
 import { computeTotals, fmt, type Movimiento, type CategoriaConId } from "@/lib/mockData";
 import { formatUSD, type Cotizacion } from "@/lib/dolar";
@@ -23,36 +22,8 @@ export function ResumenView({
   onEliminarCategoria: (id: number) => void;
   cotizacion?: Cotizacion | null;
 }) {
-  const [categoriasFiltro, setCategoriasFiltro] = useState<Set<number>>(new Set());
-  const [sinCategoria, setSinCategoria] = useState(false);
-
-  function toggleFiltroCategoria(id: number) {
-    setCategoriasFiltro((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  function handleEliminarCategoria(id: number) {
-    onEliminarCategoria(id);
-    setCategoriasFiltro((prev) => {
-      if (!prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  }
-
-  const hayFiltro = categoriasFiltro.size > 0 || sinCategoria;
-  const movimientosFiltrados = hayFiltro
-    ? movimientos.filter((m) => (m.categoriaId != null && categoriasFiltro.has(m.categoriaId)) || (sinCategoria && m.categoriaId == null))
-    : movimientos;
-  const movimientosAMostrar = hayFiltro ? movimientosFiltrados : movimientosFiltrados.slice(0, 5);
-
-  // los totales de arriba reflejan el filtro de categorías, no solo la lista de abajo
-  const { ingresos, gastos } = computeTotals(movimientosFiltrados, cotizacion ?? null);
+  const movimientosAMostrar = movimientos.slice(0, 5);
+  const { ingresos, gastos } = computeTotals(movimientos, cotizacion ?? null);
 
   return (
     <div className="pb-4 lg:pb-0">
@@ -80,12 +51,10 @@ export function ResumenView({
       >
         <CategoriaChipBar
           categorias={categorias}
-          seleccionadas={categoriasFiltro}
-          sinCategoria={sinCategoria}
-          onToggleCategoria={toggleFiltroCategoria}
-          onToggleSinCategoria={() => setSinCategoria((v) => !v)}
+          seleccionadas={new Set()}
+          sinCategoria={false}
           onAddCategoria={onAddCategoria}
-          onEliminarCategoria={handleEliminarCategoria}
+          onEliminarCategoria={onEliminarCategoria}
           loading={loadingCategorias}
         />
       </div>
@@ -136,15 +105,6 @@ export function ResumenView({
       <div className="px-5 lg:px-0 mt-7">
         <div className="flex items-center justify-between mb-2">
           <p className="text-[12.5px] lg:text-[14px] font-semibold text-foreground">Actividad</p>
-          {hayFiltro && (
-            <button
-              type="button"
-              onClick={() => { setCategoriasFiltro(new Set()); setSinCategoria(false); }}
-              className="text-[11px] font-medium text-muted-foreground"
-            >
-              Limpiar filtro
-            </button>
-          )}
         </div>
         {loading ? (
           <div>
@@ -154,7 +114,7 @@ export function ResumenView({
           </div>
         ) : movimientosAMostrar.length === 0 ? (
           <p className="text-[12.5px] text-muted-foreground">
-            {hayFiltro ? "No hay movimientos en esas categorías este mes." : "Todavía no cargaste ningún movimiento."}
+            Todavía no cargaste ningún movimiento.
           </p>
         ) : (
           <div className="animate-in fade-in-0 duration-300">

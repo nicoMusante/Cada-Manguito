@@ -5,6 +5,7 @@ import { X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatMontoInput, parseMontoInput, numberToMontoDisplay, MONTO_MAXIMO } from "@/lib/formatMonto";
 import { useModalBackClose } from "@/lib/useModalBackClose";
+import type { Cotizacion } from "@/lib/dolar";
 import type { TipoNuevoSelector } from "@/components/MovimientoModal";
 
 export type DeudaEditable = {
@@ -26,11 +27,13 @@ export function DeudaModal({
   onClose,
   onSaved,
   tipoSelector,
+  cotizacion,
 }: {
   deuda?: DeudaEditable | null; // si viene, es modo edición
   onClose: () => void;
   onSaved: () => void;
   tipoSelector?: TipoNuevoSelector; // switch "Movimiento/Deuda" compartido con MovimientoModal, sólo al crear desde el FAB
+  cotizacion?: Cotizacion | null;
 }) {
   const esEdicion = !!deuda;
   useModalBackClose(onClose);
@@ -39,6 +42,7 @@ export function DeudaModal({
   const [personaNombre, setPersonaNombre] = useState(deuda?.personaNombre ?? "");
   const [descripcion, setDescripcion] = useState(deuda?.descripcion ?? "");
   const [monto, setMonto] = useState(deuda ? numberToMontoDisplay(deuda.monto, false) : "");
+  const [moneda, setMoneda] = useState<"ARS" | "USD">("ARS");
   const [fecha, setFecha] = useState(deuda ? deuda.fecha.slice(0, 10) : hoyLocal());
   //si la plata ya se movió genero el movimiento espejo al crear, y el que sale al saldar lo cancela.
   //por defecto va prendido en "me deben" (presté guita) y apagado en "debo" (me invitaron y devuelvo después)
@@ -60,6 +64,10 @@ export function DeudaModal({
     if (!descripcion.trim()) return setError("Agregá una descripción.");
     if (!montoNum || montoNum <= 0) return setError("El monto tiene que ser mayor a 0.");
     if (montoNum > MONTO_MAXIMO) return setError("El monto es demasiado grande.");
+    if (moneda === "USD" && !cotizacion?.venta) return setError("No se pudo obtener la cotización. Probá de nuevo en un momento.");
+
+    const montoArs = moneda === "USD" ? montoNum * cotizacion!.venta : montoNum;
+    if (montoArs > MONTO_MAXIMO) return setError("El monto es demasiado grande.");
 
     setEnviando(true);
     try {
@@ -71,7 +79,9 @@ export function DeudaModal({
         body: JSON.stringify({
           persona_nombre: personaNombre.trim(),
           tipo,
-          monto: montoNum,
+          monto: montoArs,
+          moneda,
+          monto_original: moneda === "USD" ? montoNum : null,
           descripcion: descripcion.trim(),
           fecha,
           ...(esEdicion ? {} : { registrar_movimiento: registrarMov }),
@@ -95,7 +105,11 @@ export function DeudaModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/45 animate-in fade-in-0 duration-200"
-      onClick={onClose}
+      onClick={(e) => {
+        //solo cierro con un toque directo sobre el fondo, no con el click que
+        //monta este formulario al cambiar desde movimiento.
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         className="w-full lg:w-[420px] lg:rounded-3xl rounded-t-3xl p-5 pb-8 lg:pb-5 bg-card animate-in fade-in-0 slide-in-from-bottom-8 lg:slide-in-from-bottom-0 lg:zoom-in-95 duration-300 ease-out"
@@ -178,10 +192,16 @@ export function DeudaModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
+              <div className="flex items-center justify-between gap-2">
               <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Monto</label>
+              {!esEdicion && <div className="flex rounded-full p-1 bg-secondary border border-border">
+                <button type="button" onClick={() => setMoneda("ARS")} className={`px-2 py-1 rounded-full text-[10px] font-semibold ${moneda === "ARS" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>$</button>
+                <button type="button" onClick={() => setMoneda("USD")} className={`px-2 py-1 rounded-full text-[10px] font-semibold ${moneda === "USD" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>US$</button>
+              </div>}
+              </div>
               <input
                 value={monto}
-                onChange={(e) => setMonto(formatMontoInput(e.target.value, false))}
+                onChange={(e) => setMonto(formatMontoInput(e.target.value, moneda === "USD"))}
                 placeholder="0"
                 inputMode="decimal"
                 className="w-full mt-1.5 rounded-xl px-3.5 py-2.5 text-[16px] font-semibold outline-none bg-secondary text-foreground focus:ring-2 focus:ring-ring"

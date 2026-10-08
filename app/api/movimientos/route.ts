@@ -70,28 +70,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const rows = await sql`
-      SELECT insertar_movimiento(
-        ${usuarioId}, ${categoria_id ?? null}, ${descripcion?.trim() || null}, ${monto}, ${tipo}, ${fecha ?? null},
-        ${moneda ?? "ARS"}, ${monto_original ?? null}
-      ) AS id
-    `;
+    const personasCompartidas = Array.isArray(compartir?.personas) ? compartir.personas : [];
+    const rows = personasCompartidas.length > 0
+      ? await sql`
+          SELECT crear_movimiento_compartido(
+            ${usuarioId}, ${categoria_id ?? null}, ${descripcion?.trim() || null}, ${monto}, ${tipo}, ${fecha ?? null},
+            ${moneda ?? "ARS"}, ${monto_original ?? null}, ${JSON.stringify(personasCompartidas)}::jsonb
+          ) AS id
+        `
+      : await sql`
+          SELECT insertar_movimiento(
+            ${usuarioId}, ${categoria_id ?? null}, ${descripcion?.trim() || null}, ${monto}, ${tipo}, ${fecha ?? null},
+            ${moneda ?? "ARS"}, ${monto_original ?? null}
+          ) AS id
+        `;
     const movimientoId = rows[0].id;
-
-    // Si se compartió el gasto, la parte de cada persona queda como un
-    // pendiente a favor ("me deben"), vinculado a este movimiento. El split
-    // (igualitario o personalizado) ya viene calculado desde MovimientoModal.
-    // Se crean todas en una sola llamada a la función (una sola transacción
-    // del lado de Postgres) para que no queden deudas parciales si falla a
-    // mitad de camino.
-    if (Array.isArray(compartir?.personas) && compartir.personas.length > 0) {
-      await sql`
-        SELECT crear_deudas_compartidas(
-          ${usuarioId}, ${movimientoId}, ${descripcion?.trim() || null}, ${fecha ?? null},
-          ${JSON.stringify(compartir.personas)}::jsonb
-        )
-      `;
-    }
 
     return NextResponse.json({ id: movimientoId }, { status: 201 });
   } catch (error) {

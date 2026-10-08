@@ -14,6 +14,8 @@ type DeudaHistorial = {
   id: number;
   tipo: "ME_DEBEN" | "YO_DEBO";
   monto: string;
+  moneda: "ARS" | "USD";
+  monto_original: string | null;
   descripcion: string;
   fecha: string;
   estado: "pendiente" | "saldado";
@@ -44,6 +46,8 @@ export function PersonaDetalleModal({
   const [saldandoSeleccion, setSaldandoSeleccion] = useState(false);
   const [expandidoId, setExpandidoId] = useState<number | null>(null);
   const [montoPago, setMontoPago] = useState("");
+  const [montoPagoPersona, setMontoPagoPersona] = useState("");
+  const [tipoPagoPersona, setTipoPagoPersona] = useState<"ME_DEBEN" | "YO_DEBO">("ME_DEBEN");
   const [enviandoPago, setEnviandoPago] = useState(false);
   const [errorPago, setErrorPago] = useState<string | null>(null);
   const [editando, setEditando] = useState<DeudaEditable | null>(null);
@@ -161,6 +165,31 @@ export function PersonaDetalleModal({
     }
   }
 
+  async function handleAgregarPagoPersona() {
+    setErrorPago(null);
+    const montoNum = Number(parseMontoInput(montoPagoPersona));
+    if (!montoNum || montoNum <= 0) return setErrorPago("El monto tiene que ser mayor a 0.");
+    if (montoNum > MONTO_MAXIMO) return setErrorPago("El monto es demasiado grande.");
+
+    setEnviandoPago(true);
+    try {
+      const res = await fetch(`/api/personas/${personaId}/pagos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monto: montoNum, tipo: tipoPagoPersona }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "No se pudo registrar el pago.");
+      onChanged();
+      await refrescar();
+      setMontoPagoPersona("");
+    } catch (err) {
+      setErrorPago(err instanceof Error ? err.message : "Error inesperado.");
+    } finally {
+      setEnviandoPago(false);
+    }
+  }
+
   async function handleEliminarPago(pagoId: number) {
     if (!confirm("¿Eliminar este pago? La deuda vuelve a quedar pendiente por ese monto.")) return;
     try {
@@ -223,6 +252,39 @@ export function PersonaDetalleModal({
                 </p>
               )}
             </div>
+            {historial.some((h) => h.estado === "pendiente") && (
+              <div className="rounded-2xl p-3 mb-4 bg-secondary">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Registrar pago</p>
+                <div className="flex rounded-full p-1 mb-2 bg-card">
+                  <button
+                    type="button"
+                    onClick={() => setTipoPagoPersona("ME_DEBEN")}
+                    className={`flex-1 py-1.5 rounded-full text-[11.5px] font-medium ${tipoPagoPersona === "ME_DEBEN" ? "bg-income text-income-foreground" : "text-muted-foreground"}`}
+                  >Me pagó</button>
+                  <button
+                    type="button"
+                    onClick={() => setTipoPagoPersona("YO_DEBO")}
+                    className={`flex-1 py-1.5 rounded-full text-[11.5px] font-medium ${tipoPagoPersona === "YO_DEBO" ? "bg-expense text-expense-foreground" : "text-muted-foreground"}`}
+                  >Le pagué</button>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={montoPagoPersona}
+                    onChange={(e) => setMontoPagoPersona(formatMontoInput(e.target.value, false))}
+                    placeholder="Monto total"
+                    inputMode="decimal"
+                    className="flex-1 rounded-xl px-3 py-2 text-[13px] outline-none bg-card text-foreground focus:ring-2 focus:ring-ring"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAgregarPagoPersona}
+                    disabled={enviandoPago}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary text-primary-foreground disabled:opacity-60"
+                    aria-label="Registrar pago"
+                  ><Plus size={16} /></button>
+                </div>
+              </div>
+            )}
             <div className="space-y-1 mb-4">
               {historial.map((h) => {
                 const seleccionable = h.estado === "pendiente";
@@ -271,9 +333,11 @@ export function PersonaDetalleModal({
                         )}
                       </button>
                       <p className={`text-[12.5px] font-semibold ${h.estado === "saldado" ? "text-muted-foreground" : accentClass}`}>
-                        {h.tipo === "ME_DEBEN" ? "+" : "-"}{fmt(h.estado === "pendiente" ? saldoPendiente : Number(h.monto))}
+                        {h.tipo === "ME_DEBEN" ? "+" : "-"}{h.moneda === "USD" && h.monto_original
+                          ? `US$ ${(Number(h.monto_original) * (h.estado === "pendiente" ? saldoPendiente / Number(h.monto) : 1)).toLocaleString("es-AR", { maximumFractionDigits: 2 })}`
+                          : fmt(h.estado === "pendiente" ? saldoPendiente : Number(h.monto))}
                       </p>
-                      {h.estado === "pendiente" && h.pagos.length === 0 && h.movimiento_id == null && (
+                      {h.estado === "pendiente" && h.moneda === "ARS" && h.pagos.length === 0 && h.movimiento_id == null && (
                         <button
                           onClick={() =>
                             setEditando({

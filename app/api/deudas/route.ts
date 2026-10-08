@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     if (demasiadasRequests(`api:${usuarioId}`)) return demasiadasPeticiones();
 
     const body = await request.json();
-    const { persona_nombre, tipo, monto, descripcion, fecha, movimiento_id, registrar_movimiento } = body;
+    const { persona_nombre, tipo, monto, descripcion, fecha, movimiento_id, registrar_movimiento, moneda, monto_original } = body;
 
     if (!persona_nombre?.trim() || !tipo || !monto || !descripcion?.trim()) {
       return NextResponse.json(
@@ -28,9 +28,12 @@ export async function POST(request: Request) {
     if (monto > MONTO_MAXIMO) {
       return NextResponse.json({ error: "El monto es demasiado grande." }, { status: 400 });
     }
+    if ((moneda ?? "ARS") !== "ARS" && (moneda ?? "ARS") !== "USD") {
+      return NextResponse.json({ error: "moneda debe ser ARS o USD" }, { status: 400 });
+    }
 
     const rows = await sql`
-      SELECT crear_deuda(${usuarioId}, ${persona_nombre.trim()}, ${tipo}, ${monto}, ${descripcion.trim()}, ${fecha ?? null}, ${movimiento_id ?? null}, ${registrar_movimiento === true}) AS id
+      SELECT crear_deuda(${usuarioId}, ${persona_nombre.trim()}, ${tipo}, ${monto}, ${descripcion.trim()}, ${fecha ?? null}, ${movimiento_id ?? null}, ${registrar_movimiento === true}, ${moneda ?? "ARS"}, ${monto_original ?? null}) AS id
     `;
 
     return NextResponse.json({ id: rows[0].id }, { status: 201 });
